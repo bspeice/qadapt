@@ -42,3 +42,29 @@ fn allocation_flag() {
     let _x = Box::new(42);
     assert!(A.has_allocated());
 }
+
+#[inline(never)]
+fn no_op() {}
+
+#[test]
+fn no_alloc_during_noop() {
+    A.clear_allocations();
+    assert!(!A.has_allocated());
+
+    no_op();
+    assert!(!A.has_allocated());
+}
+
+#[inline(never)]
+fn allocates() {
+    let _x = Box::new(42);
+}
+
+#[test]
+fn alloc_during_func_call() {
+    A.clear_allocations();
+    assert!(!A.has_allocated());
+
+    allocates();
+    assert!(A.has_allocated());
+}
