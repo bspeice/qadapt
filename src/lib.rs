@@ -1,41 +1,42 @@
-extern crate backtrace;
-extern crate libc;
+#![no_std]
 
-use backtrace::Backtrace;
+extern crate libc;
+extern crate spin;
+
 use libc::c_void;
 use libc::free;
 use libc::malloc;
-use std::alloc::Layout;
-use std::alloc::GlobalAlloc;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
+use core::alloc::Layout;
+use core::alloc::GlobalAlloc;
+use core::sync::atomic::AtomicBool;
+use core::sync::atomic::Ordering;
 
 mod const_init;
 use const_init::ConstInit;
 
-static mut INIT_ALLOCATIONS: u32 = 576;
+static INTERNAL_ALLOCATION: AtomicBool = AtomicBool::new(false);
+
+pub struct QADAPTInternal {
+    pub has_allocated: AtomicBool
+}
 
 pub struct QADAPT {
-    pub has_allocated: AtomicBool
+    internal: spin::Once<QADAPTInternal>
 }
 
 impl ConstInit for QADAPT {
     const INIT: QADAPT = QADAPT {
-        has_allocated: AtomicBool::new(false)
+        internal: spin::Once::new()
     };
 }
 
 unsafe impl GlobalAlloc for QADAPT {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let block = malloc(layout.size()) as *mut u8;
-
-        if INIT_ALLOCATIONS > 0 {
-            INIT_ALLOCATIONS -= 1;
-        } else {
-            self.has_allocated.store(true, Ordering::SeqCst);
+        if !INTERNAL_ALLOCATION.load(Ordering::SeqCst) {
+            self.internal().has_allocated.store(true, Ordering::SeqCst);
         }
 
-        block
+        malloc(layout.size()) as *mut u8
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
@@ -46,7 +47,24 @@ unsafe impl GlobalAlloc for QADAPT {
 impl QADAPT {
     pub const INIT: Self = <Self as ConstInit>::INIT;
 
+    fn internal(&self) -> &QADAPTInternal {
+
+        self.internal.call_once(|| {
+            INTERNAL_ALLOCATION.store(true, Ordering::SeqCst);
+            let q = QADAPTInternal {
+                has_allocated: AtomicBool::new(false)
+            };
+            INTERNAL_ALLOCATION.store(false, Ordering::SeqCst);
+
+            q
+        })
+    }
+
     pub fn clear_allocations(&self) {
-        self.has_allocated.store(false, Ordering::Release)
+        self.internal().has_allocated.store(false, Ordering::SeqCst);
+    }
+
+    pub fn has_allocated(&self) -> bool {
+        self.internal().has_allocated.load(Ordering::SeqCst)
     }
 }

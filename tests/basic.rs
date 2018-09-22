@@ -25,20 +25,20 @@ struct NonEmpty {
 #[test]
 fn allocation_flag() {
     A.clear_allocations();
-    assert!(!A.has_allocated.load(Ordering::SeqCst));
+    assert!(!A.has_allocated());
 
     let _x = 24;
-    assert!(!A.has_allocated.load(Ordering::SeqCst));
+    assert!(!A.has_allocated());
 
     let _x = Empty {};
-    assert!(!A.has_allocated.load(Ordering::SeqCst));
+    assert!(!A.has_allocated());
 
     let _x = NonEmpty {
         _x: 42,
         _y: 84
     };
-    assert!(!A.has_allocated.load(Ordering::SeqCst));
+    assert!(!A.has_allocated());
 
     let _x = Box::new(42);
-    assert!(A.has_allocated.load(Ordering::SeqCst));
+    assert!(A.has_allocated());
 }
