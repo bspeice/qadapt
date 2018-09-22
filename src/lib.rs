@@ -1,5 +1,7 @@
+extern crate backtrace;
 extern crate libc;
 
+use backtrace::Backtrace;
 use libc::c_void;
 use libc::free;
 use libc::malloc;
@@ -11,12 +13,13 @@ use std::sync::atomic::Ordering;
 mod const_init;
 use const_init::ConstInit;
 
+static mut INIT_ALLOCATIONS: u32 = 576;
+
 pub struct QADAPT {
     pub has_allocated: AtomicBool
 }
 
 impl ConstInit for QADAPT {
-
     const INIT: QADAPT = QADAPT {
         has_allocated: AtomicBool::new(false)
     };
@@ -25,7 +28,12 @@ impl ConstInit for QADAPT {
 unsafe impl GlobalAlloc for QADAPT {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let block = malloc(layout.size()) as *mut u8;
-        self.has_allocated.store(true, Ordering::SeqCst);
+
+        if INIT_ALLOCATIONS > 0 {
+            INIT_ALLOCATIONS -= 1;
+        } else {
+            self.has_allocated.store(true, Ordering::SeqCst);
+        }
 
         block
     }
