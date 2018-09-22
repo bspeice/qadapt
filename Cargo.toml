@@ -1,0 +1,13 @@
+[package]
+name = "qadapt"
+version = "0.1.0"
+authors = ["Bradlee Speice <bradlee@speice.io>"]
+description = "The Quick And Dirty Allocation Profiling Tool"
+
+[dependencies]
+lazy_static = "1.1"
+
+[dependencies.libc]
+default-features = false
+features = []
+version = "0.2"
