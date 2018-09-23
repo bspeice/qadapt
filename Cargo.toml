@@ -4,6 +4,9 @@ version = "0.2.0"
 authors = ["Bradlee Speice <bradlee@speice.io>"]
 description = "The Quick And Dirty Allocation Profiling Tool"
 license = "Apache-2.0"
+readme = "README.md"
+categories = ["allocator", "nostd"]
+repository = "https://github.com/bspeice/qadapt.git"
 
 [dependencies]
 libc = { version = "0.2", default-features = false }
