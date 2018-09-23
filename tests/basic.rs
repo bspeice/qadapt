@@ -3,7 +3,6 @@ extern crate qadapt;
 use qadapt::QADAPT;
 use std::alloc::alloc;
 use std::alloc::Layout;
-use std::sync::atomic::Ordering;
 
 #[global_allocator]
 static A: QADAPT = QADAPT::INIT;
@@ -24,23 +23,24 @@ struct NonEmpty {
 
 #[test]
 fn allocation_flag() {
-    A.clear_allocations();
-    assert!(!A.has_allocated());
+    A.reset_allocation_state();
+    A.enable_recording_current();
+    assert!(!A.has_allocated_current());
 
     let _x = 24;
-    assert!(!A.has_allocated());
+    assert!(!A.has_allocated_current());
 
     let _x = Empty {};
-    assert!(!A.has_allocated());
+    assert!(!A.has_allocated_current());
 
     let _x = NonEmpty {
         _x: 42,
         _y: 84
     };
-    assert!(!A.has_allocated());
+    assert!(!A.has_allocated_current());
 
     let _x = Box::new(42);
-    assert!(A.has_allocated());
+    assert!(A.has_allocated_current());
 }
 
 #[inline(never)]
@@ -48,11 +48,12 @@ fn no_op() {}
 
 #[test]
 fn no_alloc_during_noop() {
-    A.clear_allocations();
-    assert!(!A.has_allocated());
+    A.reset_allocation_state();
+    A.enable_recording_current();
+    assert!(!A.has_allocated_current());
 
     no_op();
-    assert!(!A.has_allocated());
+    assert!(!A.has_allocated_current());
 }
 
 #[inline(never)]
@@ -62,9 +63,19 @@ fn allocates() {
 
 #[test]
 fn alloc_during_func_call() {
-    A.clear_allocations();
-    assert!(!A.has_allocated());
+    A.reset_allocation_state();
+    A.enable_recording_current();
+    assert!(!A.has_allocated_current());
 
     allocates();
-    assert!(A.has_allocated());
+    assert!(A.has_allocated_current());
+}
+
+#[test]
+fn allocates_unrecorded() {
+    A.reset_allocation_state();
+    assert!(!A.has_allocated_current());
+
+    allocates();
+    assert!(!A.has_allocated_current());
 }

@@ -1,20 +1,18 @@
 extern crate qadapt;
 
 use qadapt::QADAPT;
-use std::sync::atomic::Ordering;
 
 #[global_allocator]
 static A: QADAPT = QADAPT::INIT;
 
 #[test]
 fn init() {
-    // Because the Allocator and its internals isn't the only "pre-main" allocation
-    // that happens, when starting up we expect to see that A has in fact allocated
-    assert!(A.has_allocated());
+    assert!(!A.has_allocated_current());
+    A.reset_allocation_state();
+    A.enable_recording_current();
 
-    A.clear_allocations();
-    assert!(!A.has_allocated());
+    assert!(!A.has_allocated_current());
 
     let _x = Box::new(42);
-    assert!(A.has_allocated());
+    assert!(A.has_allocated_current());
 }
