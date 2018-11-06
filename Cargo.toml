@@ -1,6 +1,6 @@
 [package]
 name = "qadapt"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Bradlee Speice <bradlee@speice.io>"]
 description = "The Quick And Dirty Allocation Profiling Tool"
 license = "Apache-2.0"
@@ -9,5 +9,7 @@ categories = ["allocator", "nostd"]
 repository = "https://github.com/bspeice/qadapt.git"
 
 [dependencies]
-libc = { version = "0.2", default-features = false }
+backtrace = "0.3"
+libc = "0.2"
+log = "0.4"
 spin = "0.4"
