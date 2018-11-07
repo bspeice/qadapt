@@ -1,5 +1,4 @@
 #![feature(asm)]
-
 extern crate qadapt;
 
 use qadapt::QADAPT;

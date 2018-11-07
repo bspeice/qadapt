@@ -13,3 +13,5 @@ backtrace = "0.3"
 libc = "0.2"
 log = "0.4"
 spin = "0.4"
+
+qadapt-macro = { path = "./qadapt-macro" }

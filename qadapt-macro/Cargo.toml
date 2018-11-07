@@ -1,0 +1,9 @@
+[package]
+name = "qadapt-macro"
+version = "0.1.0"
+authors = ["Bradlee Speice <bradlee@speice.io>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]

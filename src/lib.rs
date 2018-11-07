@@ -1,8 +1,12 @@
 extern crate backtrace;
 extern crate libc;
+extern crate qadapt_macro;
 #[macro_use]
 extern crate log;
 extern crate spin;
+
+// Re-export the proc macros to use by other code
+pub use qadapt_macro::*;
 
 use backtrace::Backtrace;
 use libc::c_void;
