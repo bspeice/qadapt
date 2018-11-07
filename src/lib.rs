@@ -20,7 +20,15 @@ static LOG_LEVEL: RwLock<Level> = RwLock::new(Level::Debug);
 pub struct QADAPT;
 
 pub fn set_panic(b: bool) {
-    *DO_PANIC.write() = b;
+    let mut val = DO_PANIC.write();
+    if *val == b {
+        let level = LOG_LEVEL.read();
+        if log_enabled!(*level) {
+            log!(*level, "Panic flag was already {}, potential data race", b)
+        }
+    }
+
+    *val = b;
 }
 
 pub fn set_log_level(level: Level) {
