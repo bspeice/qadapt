@@ -1,80 +1,102 @@
-extern crate backtrace;
 extern crate libc;
 extern crate qadapt_macro;
-#[macro_use]
-extern crate log;
 extern crate spin;
 
 // Re-export the proc macros to use by other code
 pub use qadapt_macro::*;
 
-use backtrace::Backtrace;
 use libc::c_void;
 use libc::free;
 use libc::malloc;
-use log::Level;
+use spin::Mutex;
 use std::alloc::Layout;
 use std::alloc::GlobalAlloc;
-use spin::RwLock;
+use std::sync::RwLock;
+use std::thread;
 
-static DO_PANIC: RwLock<bool> = RwLock::new(false);
-static INTERNAL_ALLOCATION: RwLock<bool> = RwLock::new(false);
-static LOG_LEVEL: RwLock<Level> = RwLock::new(Level::Debug);
+static THREAD_LOCAL_LOCK: Mutex<()> = Mutex::new(());
+thread_local! {
+    static PROTECTION_LEVEL: RwLock<u32> = RwLock::new(0);
+}
 
 pub struct QADAPT;
 
-pub fn set_panic(b: bool) {
-    let mut val = DO_PANIC.write();
-    if *val == b {
-        let level = LOG_LEVEL.read();
-        if log_enabled!(*level) {
-            log!(*level, "Panic flag was already {}, potential data race", b)
-        }
+pub fn enter_protected() {
+    if thread::panicking() {
+        return
     }
 
-    *val = b;
+    PROTECTION_LEVEL.try_with(|v| {
+        *v.write().unwrap() += 1;
+    }).unwrap_or_else(|_e| ());
 }
 
-pub fn set_log_level(level: Level) {
-    *LOG_LEVEL.write() = level;
+pub fn exit_protected() {
+    if thread::panicking() {
+        return
+    }
+
+    PROTECTION_LEVEL.try_with(|v| {
+        let val = { *v.read().unwrap() };
+        match val {
+            v if v == 0 => panic!("Attempt to exit protected too many times"),
+            _ => {
+                *v.write().unwrap() -= 1;
+            }
+        }
+    }).unwrap_or_else(|_e| ());
 }
 
 unsafe impl GlobalAlloc for QADAPT {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // Use a block to release the read guard
-        let should_panic = { *DO_PANIC.read() };
-
-        if should_panic && !*INTERNAL_ALLOCATION.read() {
-            // Only trip one panic at a time, don't want to cause issues on potential rewind
-            *DO_PANIC.write() = false;
-            panic!("Unexpected allocation")
-        } else if log_enabled!(*LOG_LEVEL.read()) {
-            // We wrap in a block because we need to release the write guard
-            // so allocations during `Backtrace::new()` can read
-            { *INTERNAL_ALLOCATION.write() = true; }
-
-            let bt = Backtrace::new();
-            log!(*LOG_LEVEL.read(), "Unexpected allocation:\n{:?}", bt);
-
-            *INTERNAL_ALLOCATION.write() = false;
+        // If we're attempting to allocate our PROTECTION_LEVEL thread local,
+        // just allow it through
+        if thread::panicking() || THREAD_LOCAL_LOCK.try_lock().is_none() {
+            return malloc(layout.size()) as *mut u8;
         }
 
-        malloc(layout.size()) as *mut u8
+        let protection_level: Result<u32, ()> = {
+            let _lock = THREAD_LOCAL_LOCK.lock();
+            PROTECTION_LEVEL.try_with(|v| *v.read().unwrap())
+                .or(Ok(0))
+        };
+
+        match protection_level {
+            Ok(v) if v == 0 => malloc(layout.size()) as *mut u8,
+            //Ok(v) => panic!("Unexpected allocation for size {}, protection level: {}", layout.size(), v),
+            Ok(v) => {
+                // Tripped a bad allocation, but make sure further allocation/deallocation during unwind
+                // doesn't have issues
+                PROTECTION_LEVEL.with(|v| *v.write().unwrap() = 0);
+                panic!("Unexpected allocation for size {}, protection level: {}", layout.size(), v)
+            }
+            Err(_) => {
+                // It shouldn't be possible to reach this point...
+                panic!("Unexpected error for fetching protection level")
+            }
+        }
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        if *DO_PANIC.read() && !*INTERNAL_ALLOCATION.read() {
-            panic!("Unexpected drop")
-        } else if log_enabled!(*LOG_LEVEL.read()) {
-            // We wrap in a block because we need to release the write guard
-            // so allocations during `Backtrace::new()` can read
-            { *INTERNAL_ALLOCATION.write() = true; }
-
-            let bt = Backtrace::new();
-            log!(*LOG_LEVEL.read(), "Unexpected drop:\n{:?}", bt);
-
-            *INTERNAL_ALLOCATION.write() = false;
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        if thread::panicking() || THREAD_LOCAL_LOCK.try_lock().is_none() {
+            return free(ptr as *mut c_void);
         }
-        free(ptr as *mut c_void)
+
+        let protection_level: Result<u32, ()> = {
+            let _lock = THREAD_LOCAL_LOCK.lock();
+            PROTECTION_LEVEL.try_with(|v| *v.read().unwrap())
+                .or(Ok(0))
+        };
+
+        free(ptr as *mut c_void);
+        match protection_level {
+            Ok(v) if v > 0 => {
+                // Tripped a bad dealloc, but make sure further memory access during unwind
+                // doesn't have issues
+                PROTECTION_LEVEL.with(|v| *v.write().unwrap() = 0);
+                panic!("Unexpected deallocation for size {}, protection level: {}", layout.size(), v)
+            },
+            _ => ()
+        }
     }
 }
