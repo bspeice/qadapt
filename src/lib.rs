@@ -8,13 +8,12 @@ pub use qadapt_macro::*;
 use libc::c_void;
 use libc::free;
 use libc::malloc;
-use spin::Mutex;
+use libc::pthread_self;
+use spin::RwLock;
 use std::alloc::Layout;
 use std::alloc::GlobalAlloc;
-use std::sync::RwLock;
 use std::thread;
 
-static THREAD_LOCAL_LOCK: Mutex<()> = Mutex::new(());
 thread_local! {
     static PROTECTION_LEVEL: RwLock<u32> = RwLock::new(0);
 }
@@ -27,7 +26,7 @@ pub fn enter_protected() {
     }
 
     PROTECTION_LEVEL.try_with(|v| {
-        *v.write().unwrap() += 1;
+        *v.write() += 1;
     }).unwrap_or_else(|_e| ());
 }
 
@@ -37,63 +36,93 @@ pub fn exit_protected() {
     }
 
     PROTECTION_LEVEL.try_with(|v| {
-        let val = { *v.read().unwrap() };
+        let val = { *v.read() };
         match val {
             v if v == 0 => panic!("Attempt to exit protected too many times"),
             _ => {
-                *v.write().unwrap() -= 1;
+                *v.write() -= 1;
             }
         }
     }).unwrap_or_else(|_e| ());
+}
+
+static INTERNAL_ALLOCATION: RwLock<u64> = RwLock::new(u64::max_value());
+
+unsafe fn claim_internal_alloc() -> u64 {
+    // std::thread::current() isn't safe because of thread-local allocations
+    let tid = pthread_self();
+    loop {
+        match INTERNAL_ALLOCATION.write() {
+            ref mut lock if **lock == u64::max_value() => {
+                **lock = tid;
+                break
+            },
+            _ => ()
+        }
+    }
+
+    tid
+}
+
+unsafe fn release_internal_alloc() -> u64 {
+    let tid = pthread_self();
+    // TODO: Potential issues with releasing lock too early?
+    match INTERNAL_ALLOCATION.write() {
+        ref mut lock if **lock == tid => **lock = u64::max_value(),
+        _ => panic!("Internal allocation tracking error")
+    }
+
+    tid
+}
+
+unsafe fn alloc_immediate() -> bool {
+    thread::panicking() || *INTERNAL_ALLOCATION.read() == pthread_self()
 }
 
 unsafe impl GlobalAlloc for QADAPT {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // If we're attempting to allocate our PROTECTION_LEVEL thread local,
         // just allow it through
-        if thread::panicking() || THREAD_LOCAL_LOCK.try_lock().is_none() {
+        if alloc_immediate() {
             return malloc(layout.size()) as *mut u8;
         }
 
-        let protection_level: Result<u32, ()> = {
-            let _lock = THREAD_LOCAL_LOCK.lock();
-            PROTECTION_LEVEL.try_with(|v| *v.read().unwrap())
-                .or(Ok(0))
-        };
+        // Because accessing PROTECTION_LEVEL has the potential to trigger an allocation, 
+        // we need to spin until we can claim the INTERNAL_ALLOCATION lock for our thread.
+        claim_internal_alloc();
+        let protection_level: Result<u32, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
+        release_internal_alloc();
 
         match protection_level {
             Ok(v) if v == 0 => malloc(layout.size()) as *mut u8,
-            //Ok(v) => panic!("Unexpected allocation for size {}, protection level: {}", layout.size(), v),
             Ok(v) => {
                 // Tripped a bad allocation, but make sure further allocation/deallocation during unwind
                 // doesn't have issues
-                PROTECTION_LEVEL.with(|v| *v.write().unwrap() = 0);
+                PROTECTION_LEVEL.with(|v| *v.write() = 0);
                 panic!("Unexpected allocation for size {}, protection level: {}", layout.size(), v)
-            }
+            },
             Err(_) => {
-                // It shouldn't be possible to reach this point...
-                panic!("Unexpected error for fetching protection level")
+                // Shouldn't be possible to get here
+                panic!("Unexpected error checking protection level")
             }
         }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        if thread::panicking() || THREAD_LOCAL_LOCK.try_lock().is_none() {
+        if alloc_immediate() {
             return free(ptr as *mut c_void);
         }
 
-        let protection_level: Result<u32, ()> = {
-            let _lock = THREAD_LOCAL_LOCK.lock();
-            PROTECTION_LEVEL.try_with(|v| *v.read().unwrap())
-                .or(Ok(0))
-        };
+        claim_internal_alloc();
+        let protection_level: Result<u32, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
+        release_internal_alloc();
 
         free(ptr as *mut c_void);
         match protection_level {
             Ok(v) if v > 0 => {
                 // Tripped a bad dealloc, but make sure further memory access during unwind
                 // doesn't have issues
-                PROTECTION_LEVEL.with(|v| *v.write().unwrap() = 0);
+                PROTECTION_LEVEL.with(|v| *v.write() = 0);
                 panic!("Unexpected deallocation for size {}, protection level: {}", layout.size(), v)
             },
             _ => ()
