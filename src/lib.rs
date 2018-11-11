@@ -1,3 +1,15 @@
+//! The Quick And Dirty Allocation Profiling Tool
+//! 
+//! This allocator is a helper for writing high-performance code that is allocation/drop free;
+//! for functions annotated with `#[allocate_panic]`, QADAPT will detect when allocations/drops
+//! happen during their execution (and execution of any functions they call) and throw a
+//! thread panic if this occurs.
+//! 
+//! Because QADAPT panics on allocation and is rather slow (for an allocator) it is **strongly**
+//! recommended that QADAPT (the allocator) be used only in code tests. Functions annotated with
+//! `#[allocate_panic]` will have no side effects if the QADAPT allocator is not being used,
+//! so the attribute is safe to leave everywhere.
+#![deny(missing_docs)]
 extern crate libc;
 extern crate qadapt_macro;
 extern crate spin;
@@ -18,8 +30,11 @@ thread_local! {
     static PROTECTION_LEVEL: RwLock<u32> = RwLock::new(0);
 }
 
+/// The QADAPT allocator itself
 pub struct QADAPT;
 
+/// Let QADAPT know that we are now entering a protected region and that
+/// panics should be triggered if allocations/drops happen while we are running.
 pub fn enter_protected() {
     if thread::panicking() {
         return
@@ -30,6 +45,8 @@ pub fn enter_protected() {
     }).unwrap_or_else(|_e| ());
 }
 
+/// Let QADAPT know that we are exiting a protected region. Will panic
+/// if we attempt to [`exit_protected`] more times than we [`enter_protected`].
 pub fn exit_protected() {
     if thread::panicking() {
         return
