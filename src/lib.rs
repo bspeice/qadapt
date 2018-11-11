@@ -73,7 +73,7 @@ pub fn exit_protected() {
 
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
-unsafe fn claim_internal_alloc() {
+fn claim_internal_alloc() {
     loop {
         match INTERNAL_ALLOCATION.write() {
             ref mut lock if **lock == usize::max_value() => {
@@ -85,14 +85,14 @@ unsafe fn claim_internal_alloc() {
     }
 }
 
-unsafe fn release_internal_alloc() {
+fn release_internal_alloc() {
     match INTERNAL_ALLOCATION.write() {
         ref mut lock if **lock == thread_id::get() => **lock = usize::max_value(),
         _ => panic!("Internal allocation tracking error"),
     }
 }
 
-unsafe fn alloc_immediate() -> bool {
+fn alloc_immediate() -> bool {
     thread::panicking() || *INTERNAL_ALLOCATION.read() == thread_id::get()
 }
 
