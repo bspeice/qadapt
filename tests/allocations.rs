@@ -87,3 +87,11 @@ fn test_vec_with_one() {
     enter_protected();
     let _v: Vec<u8> = Vec::with_capacity(1);
 }
+
+#[test]
+#[should_panic]
+fn exit_too_often() {
+    enter_protected();
+    exit_protected();
+    exit_protected();
+}

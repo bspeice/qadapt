@@ -9,10 +9,15 @@
 //! recommended that QADAPT (the allocator) be used only in code tests. Functions annotated with
 //! `#[allocate_panic]` will have no side effects if the QADAPT allocator is not being used,
 //! so the attribute is safe to leave everywhere.
+//! 
+//! Currently this crate is Nightly-only, but will work once `const fn` is in Stable.
 #![deny(missing_docs)]
 extern crate libc;
 extern crate qadapt_macro;
 extern crate spin;
+// thread_id is necessary because `std::thread::current()` panics if we have not yet
+// allocated a `thread_local!{}` it depends on.
+extern crate thread_id;
 
 // Re-export the proc macros to use by other code
 pub use qadapt_macro::*;
@@ -20,14 +25,13 @@ pub use qadapt_macro::*;
 use libc::c_void;
 use libc::free;
 use libc::malloc;
-use libc::pthread_self;
 use spin::RwLock;
 use std::alloc::Layout;
 use std::alloc::GlobalAlloc;
 use std::thread;
 
 thread_local! {
-    static PROTECTION_LEVEL: RwLock<u32> = RwLock::new(0);
+    static PROTECTION_LEVEL: RwLock<usize> = RwLock::new(0);
 }
 
 /// The QADAPT allocator itself
@@ -63,37 +67,29 @@ pub fn exit_protected() {
     }).unwrap_or_else(|_e| ());
 }
 
-static INTERNAL_ALLOCATION: RwLock<u64> = RwLock::new(u64::max_value());
+static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
-unsafe fn claim_internal_alloc() -> u64 {
-    // std::thread::current() isn't safe because of thread-local allocations
-    let tid = pthread_self();
+unsafe fn claim_internal_alloc() {
     loop {
         match INTERNAL_ALLOCATION.write() {
-            ref mut lock if **lock == u64::max_value() => {
-                **lock = tid;
+            ref mut lock if **lock == usize::max_value() => {
+                **lock = thread_id::get();
                 break
             },
             _ => ()
         }
     }
-
-    tid
 }
 
-unsafe fn release_internal_alloc() -> u64 {
-    let tid = pthread_self();
-    // TODO: Potential issues with releasing lock too early?
+unsafe fn release_internal_alloc() {
     match INTERNAL_ALLOCATION.write() {
-        ref mut lock if **lock == tid => **lock = u64::max_value(),
+        ref mut lock if **lock == thread_id::get() => **lock = usize::max_value(),
         _ => panic!("Internal allocation tracking error")
     }
-
-    tid
 }
 
 unsafe fn alloc_immediate() -> bool {
-    thread::panicking() || *INTERNAL_ALLOCATION.read() == pthread_self()
+    thread::panicking() || *INTERNAL_ALLOCATION.read() == thread_id::get()
 }
 
 unsafe impl GlobalAlloc for QADAPT {
@@ -107,21 +103,18 @@ unsafe impl GlobalAlloc for QADAPT {
         // Because accessing PROTECTION_LEVEL has the potential to trigger an allocation, 
         // we need to spin until we can claim the INTERNAL_ALLOCATION lock for our thread.
         claim_internal_alloc();
-        let protection_level: Result<u32, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
+        let protection_level: Result<usize, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
         release_internal_alloc();
 
         match protection_level {
             Ok(v) if v == 0 => malloc(layout.size()) as *mut u8,
             Ok(v) => {
-                // Tripped a bad allocation, but make sure further allocation/deallocation during unwind
+                // Tripped a bad allocation, but make sure further memory access during unwind
                 // doesn't have issues
                 PROTECTION_LEVEL.with(|v| *v.write() = 0);
                 panic!("Unexpected allocation for size {}, protection level: {}", layout.size(), v)
             },
-            Err(_) => {
-                // Shouldn't be possible to get here
-                panic!("Unexpected error checking protection level")
-            }
+            Err(_) => unreachable!()
         }
     }
 
@@ -131,9 +124,10 @@ unsafe impl GlobalAlloc for QADAPT {
         }
 
         claim_internal_alloc();
-        let protection_level: Result<u32, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
+        let protection_level: Result<usize, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
         release_internal_alloc();
 
+        // Free before checking panic to make sure we avoid leaks
         free(ptr as *mut c_void);
         match protection_level {
             Ok(v) if v > 0 => {
