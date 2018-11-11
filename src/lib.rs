@@ -1,15 +1,15 @@
 //! The Quick And Dirty Allocation Profiling Tool
-//! 
+//!
 //! This allocator is a helper for writing high-performance code that is allocation/drop free;
 //! for functions annotated with `#[allocate_panic]`, QADAPT will detect when allocations/drops
 //! happen during their execution (and execution of any functions they call) and throw a
 //! thread panic if this occurs.
-//! 
+//!
 //! Because QADAPT panics on allocation and is rather slow (for an allocator) it is **strongly**
 //! recommended that QADAPT (the allocator) be used only in code tests. Functions annotated with
 //! `#[allocate_panic]` will have no side effects if the QADAPT allocator is not being used,
 //! so the attribute is safe to leave everywhere.
-//! 
+//!
 //! Currently this crate is Nightly-only, but will work once `const fn` is in Stable.
 #![deny(missing_docs)]
 extern crate libc;
@@ -26,8 +26,8 @@ use libc::c_void;
 use libc::free;
 use libc::malloc;
 use spin::RwLock;
-use std::alloc::Layout;
 use std::alloc::GlobalAlloc;
+use std::alloc::Layout;
 use std::thread;
 
 thread_local! {
@@ -41,30 +41,34 @@ pub struct QADAPT;
 /// panics should be triggered if allocations/drops happen while we are running.
 pub fn enter_protected() {
     if thread::panicking() {
-        return
+        return;
     }
 
-    PROTECTION_LEVEL.try_with(|v| {
-        *v.write() += 1;
-    }).unwrap_or_else(|_e| ());
+    PROTECTION_LEVEL
+        .try_with(|v| {
+            *v.write() += 1;
+        })
+        .unwrap_or_else(|_e| ());
 }
 
 /// Let QADAPT know that we are exiting a protected region. Will panic
 /// if we attempt to [`exit_protected`] more times than we [`enter_protected`].
 pub fn exit_protected() {
     if thread::panicking() {
-        return
+        return;
     }
 
-    PROTECTION_LEVEL.try_with(|v| {
-        let val = { *v.read() };
-        match val {
-            v if v == 0 => panic!("Attempt to exit protected too many times"),
-            _ => {
-                *v.write() -= 1;
+    PROTECTION_LEVEL
+        .try_with(|v| {
+            let val = { *v.read() };
+            match val {
+                v if v == 0 => panic!("Attempt to exit protected too many times"),
+                _ => {
+                    *v.write() -= 1;
+                }
             }
-        }
-    }).unwrap_or_else(|_e| ());
+        })
+        .unwrap_or_else(|_e| ());
 }
 
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
@@ -74,9 +78,9 @@ unsafe fn claim_internal_alloc() {
         match INTERNAL_ALLOCATION.write() {
             ref mut lock if **lock == usize::max_value() => {
                 **lock = thread_id::get();
-                break
-            },
-            _ => ()
+                break;
+            }
+            _ => (),
         }
     }
 }
@@ -84,7 +88,7 @@ unsafe fn claim_internal_alloc() {
 unsafe fn release_internal_alloc() {
     match INTERNAL_ALLOCATION.write() {
         ref mut lock if **lock == thread_id::get() => **lock = usize::max_value(),
-        _ => panic!("Internal allocation tracking error")
+        _ => panic!("Internal allocation tracking error"),
     }
 }
 
@@ -100,10 +104,11 @@ unsafe impl GlobalAlloc for QADAPT {
             return malloc(layout.size()) as *mut u8;
         }
 
-        // Because accessing PROTECTION_LEVEL has the potential to trigger an allocation, 
+        // Because accessing PROTECTION_LEVEL has the potential to trigger an allocation,
         // we need to spin until we can claim the INTERNAL_ALLOCATION lock for our thread.
         claim_internal_alloc();
-        let protection_level: Result<usize, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
+        let protection_level: Result<usize, ()> =
+            PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
         release_internal_alloc();
 
         match protection_level {
@@ -112,9 +117,13 @@ unsafe impl GlobalAlloc for QADAPT {
                 // Tripped a bad allocation, but make sure further memory access during unwind
                 // doesn't have issues
                 PROTECTION_LEVEL.with(|v| *v.write() = 0);
-                panic!("Unexpected allocation for size {}, protection level: {}", layout.size(), v)
-            },
-            Err(_) => unreachable!()
+                panic!(
+                    "Unexpected allocation for size {}, protection level: {}",
+                    layout.size(),
+                    v
+                )
+            }
+            Err(_) => unreachable!(),
         }
     }
 
@@ -124,7 +133,8 @@ unsafe impl GlobalAlloc for QADAPT {
         }
 
         claim_internal_alloc();
-        let protection_level: Result<usize, ()> = PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
+        let protection_level: Result<usize, ()> =
+            PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
         release_internal_alloc();
 
         // Free before checking panic to make sure we avoid leaks
@@ -134,9 +144,13 @@ unsafe impl GlobalAlloc for QADAPT {
                 // Tripped a bad dealloc, but make sure further memory access during unwind
                 // doesn't have issues
                 PROTECTION_LEVEL.with(|v| *v.write() = 0);
-                panic!("Unexpected deallocation for size {}, protection level: {}", layout.size(), v)
-            },
-            _ => ()
+                panic!(
+                    "Unexpected deallocation for size {}, protection level: {}",
+                    layout.size(),
+                    v
+                )
+            }
+            _ => (),
         }
     }
 }

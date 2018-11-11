@@ -1,16 +1,16 @@
 #![feature(asm)]
 extern crate qadapt;
 
-use qadapt::QADAPT;
 use qadapt::enter_protected;
 use qadapt::exit_protected;
+use qadapt::QADAPT;
 
 #[global_allocator]
 static Q: QADAPT = QADAPT;
 
 pub fn black_box<T>(dummy: T) -> T {
     // Taken from test lib, need to mark the arg as non-introspectable
-    unsafe {asm!("" : : "r"(&dummy))}
+    unsafe { asm!("" : : "r"(&dummy)) }
     dummy
 }
 
@@ -41,10 +41,14 @@ fn unit_result(b: bool) -> Result<(), ()> {
 fn test_unit_result() {
     enter_protected();
     #[allow(unused)]
-    { black_box(unit_result(true)); }
+    {
+        black_box(unit_result(true));
+    }
     black_box(unit_result(true)).unwrap();
     #[allow(unused)]
-    { black_box(unit_result(false)); }
+    {
+        black_box(unit_result(false));
+    }
     black_box(unit_result(false)).unwrap_err();
     exit_protected();
 }
