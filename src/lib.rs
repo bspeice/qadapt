@@ -11,6 +11,9 @@
 //! so the attribute is safe to leave everywhere.
 //!
 //! Currently this crate is Nightly-only, but will work once `const fn` is in Stable.
+//! 
+//! Please also take a look at [qadapt-macro](https://github.com/bspeice/qadapt/tree/master/qadapt-macro)
+//! for some helper macros to make working with QADAPT a bit easier.
 #![deny(missing_docs)]
 extern crate libc;
 extern crate qadapt_macro;
