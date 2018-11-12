@@ -5,12 +5,17 @@ authors = ["Bradlee Speice <bradlee@speice.io>"]
 description = "The Quick And Dirty Allocation Profiling Tool"
 license = "Apache-2.0"
 readme = "README.md"
-categories = ["allocator", "nostd"]
+categories = [
+    "development-tools",
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "development-tools::testing",
+    "memory-management"
+]
 repository = "https://github.com/bspeice/qadapt.git"
 
 [dependencies]
 libc = "0.2"
-log = "0.4"
 spin = "0.4"
 thread-id = "3.3"
 

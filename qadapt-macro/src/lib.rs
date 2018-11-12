@@ -1,17 +1,17 @@
 //! Helper macros to use with the QADAPT allocator system
-//! 
+//!
 //! This crate is intended for managing the QADAPT allocator,
 //! and is unusable on its own.
-//! 
+//!
 // TODO: This causes issues, but I can't track down why
 // #![deny(missing_docs)]
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-use proc_macro::TokenTree;
+use proc_macro::Delimiter;
 use proc_macro::Spacing;
 use proc_macro::Span;
-use proc_macro::Delimiter;
+use proc_macro::TokenStream;
+use proc_macro::TokenTree;
 use std::iter::FromIterator;
 
 type TT = proc_macro::TokenTree;
@@ -46,7 +46,7 @@ fn protected_group(fn_body: G) -> TokenTree {
 
 /// Set up the QADAPT allocator to trigger a panic if any allocations happen during
 /// calls to this function.
-/// 
+///
 /// QADAPT will only track allocations in the thread that calls this function;
 /// if (for example) this function receives the results of an allocation in a
 /// separate thread, QADAPT will not trigger a panic.
@@ -61,8 +61,8 @@ pub fn allocate_panic(_attr: TokenStream, item: TokenStream) -> TokenStream {
             TokenTree::Group(ref g) if g.delimiter() == Delimiter::Brace => {
                 fn_body = Some(g.clone());
                 break;
-            },
-            tt => ret.push(tt)
+            }
+            tt => ret.push(tt),
         }
     }
     ret.push(protected_group(fn_body.unwrap()));

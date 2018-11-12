@@ -1,7 +1,7 @@
 extern crate qadapt;
 
-use qadapt::QADAPT;
 use qadapt::allocate_panic;
+use qadapt::QADAPT;
 
 #[global_allocator]
 static Q: QADAPT = QADAPT;
@@ -9,7 +9,8 @@ static Q: QADAPT = QADAPT;
 #[allocate_panic]
 fn allocates() {
     assert_eq!(::qadapt::protection_level(), 1);
-    let mut v = Vec::new();
+    // Without boxing, release profile can actually optimize out the allocation
+    let mut v = Box::new(Vec::new());
     v.push(1);
 }
 
