@@ -13,11 +13,6 @@ categories = [
     "memory-management"
 ]
 repository = "https://github.com/bspeice/qadapt.git"
-name = "qadapt-macro"
-version = "0.1.0"
-authors = ["Bradlee Speice <bradlee@speice.io>"]
 
 [lib]
 proc-macro = true
-
-[dependencies]
