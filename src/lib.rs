@@ -73,6 +73,11 @@ pub fn exit_protected() {
 
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
+/// Get the current "protection level" in QADAPT: calls to enter_protected() - exit_protected()
+pub fn protection_level() -> usize {
+    PROTECTION_LEVEL.try_with(|v| *v.read() ).unwrap_or(0)
+}
+
 fn claim_internal_alloc() {
     loop {
         match INTERNAL_ALLOCATION.write() {
