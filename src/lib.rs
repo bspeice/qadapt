@@ -11,7 +11,7 @@
 //! so the attribute is safe to leave everywhere.
 //!
 //! Currently this crate is Nightly-only, but will work once `const fn` is in Stable.
-//! 
+//!
 //! Please also take a look at [qadapt-macro](https://github.com/bspeice/qadapt/tree/master/qadapt-macro)
 //! for some helper macros to make working with QADAPT a bit easier.
 #![deny(missing_docs)]
@@ -135,7 +135,7 @@ unsafe impl GlobalAlloc for QADAPT {
         }
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
         if alloc_immediate() {
             return free(ptr as *mut c_void);
         }
@@ -152,11 +152,13 @@ unsafe impl GlobalAlloc for QADAPT {
                 // Tripped a bad dealloc, but make sure further memory access during unwind
                 // doesn't have issues
                 PROTECTION_LEVEL.with(|v| *v.write() = 0);
+                /*
                 panic!(
                     "Unexpected deallocation for size {}, protection level: {}",
                     layout.size(),
                     v
                 )
+                */
             }
             _ => (),
         }

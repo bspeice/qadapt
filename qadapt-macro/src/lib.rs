@@ -20,7 +20,27 @@ type G = proc_macro::Group;
 type I = proc_macro::Ident;
 type P = proc_macro::Punct;
 
-fn protected_group(fn_body: G) -> TokenTree {
+fn protected_body(fn_name: &str, args: G) -> TokenTree {
+    let mut args_filtered = Vec::new();
+    let mut waiting_for_comma = false;
+    let mut in_type = 0;
+    for tt in args.stream().into_iter() {
+        match tt {
+            TokenTree::Ident(ref _i) if !waiting_for_comma && in_type == 0 => {
+                args_filtered.push(tt.clone());
+                waiting_for_comma = true;
+            }
+            TokenTree::Punct(ref p) if p.as_char() == '<' => in_type += 1,
+            TokenTree::Punct(ref p) if p.as_char() == '>' => in_type -= 1,
+            TokenTree::Punct(ref p) if p.as_char() == ',' && in_type == 0 => {
+                waiting_for_comma = false;
+                args_filtered.push(tt.clone())
+            }
+            _ => ()
+        }
+    }
+    let args_group = G::new(Delimiter::Parenthesis, TS::from_iter(args_filtered));
+        
     let tt: Vec<TT> = vec![
         P::new(':', Spacing::Joint).into(),
         P::new(':', Spacing::Alone).into(),
@@ -30,7 +50,12 @@ fn protected_group(fn_body: G) -> TokenTree {
         I::new("enter_protected", Span::call_site()).into(),
         G::new(Delimiter::Parenthesis, TokenStream::new()).into(),
         P::new(';', Spacing::Alone).into(),
-        fn_body.into(),
+        I::new("let", Span::call_site()).into(),
+        I::new("__ret__", Span::call_site()).into(),
+        P::new('=', Spacing::Alone).into(),
+        I::new(fn_name, Span::call_site()).into(),
+        args_group.into(),
+        P::new(';', Spacing::Alone).into(),
         P::new(':', Spacing::Joint).into(),
         P::new(':', Spacing::Alone).into(),
         I::new("qadapt", Span::call_site()).into(),
@@ -39,6 +64,7 @@ fn protected_group(fn_body: G) -> TokenTree {
         I::new("exit_protected", Span::call_site()).into(),
         G::new(Delimiter::Parenthesis, TokenStream::new()).into(),
         P::new(';', Spacing::Alone).into(),
+        I::new("__ret__", Span::call_site()).into(),
     ];
 
     G::new(Delimiter::Brace, TS::from_iter(tt)).into()
@@ -52,19 +78,48 @@ fn protected_group(fn_body: G) -> TokenTree {
 /// separate thread, QADAPT will not trigger a panic.
 #[proc_macro_attribute]
 pub fn allocate_panic(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut ret: Vec<TokenTree> = Vec::new();
+    let mut original_fn: Vec<TokenTree> = Vec::new();
+    let mut protected_fn: Vec<TokenTree> = Vec::new();
 
-    let mut fn_body = None;
     let mut item_iter = item.into_iter();
+
+    // First, get the function name we're replacing
+    let mut fn_name = None;
+    let mut fn_args = None;
     while let Some(tt) = item_iter.next() {
         match tt {
-            TokenTree::Group(ref g) if g.delimiter() == Delimiter::Brace => {
-                fn_body = Some(g.clone());
-                break;
+            TokenTree::Ident(ref i) if i.to_string() == "fn" => {
+                original_fn.push(tt.clone());
+                protected_fn.push(tt.clone());
             }
-            tt => ret.push(tt),
+            TokenTree::Ident(ref i) if fn_args.is_none() => {
+                let changed_name = format!("__{}__", i.to_owned());
+                original_fn.push(TokenTree::Ident(I::new(&changed_name, Span::call_site())));
+                protected_fn.push(tt.clone());
+                fn_name = Some(changed_name);
+            }
+            TokenTree::Group(ref g) if g.delimiter() == Delimiter::Parenthesis && fn_args.is_none() => {
+                original_fn.push(tt.clone());
+                protected_fn.push(tt.clone());
+                fn_args = Some(g.clone());
+            }
+            TokenTree::Group(ref g) if g.delimiter() == Delimiter::Brace => {
+                original_fn.push(tt.clone());
+                protected_fn.push(protected_body(
+                    &fn_name.take().unwrap(),
+                    fn_args.take().unwrap(),
+                ));
+            }
+            tt => {
+                original_fn.push(tt.clone());
+                protected_fn.push(tt.clone());
+            }
         }
     }
-    ret.push(protected_group(fn_body.unwrap()));
-    TokenStream::from_iter(ret.into_iter())
+
+    let mut full = Vec::new();
+    full.push(TS::from_iter(original_fn));
+    full.push(TS::from_iter(protected_fn));
+    let ts = TS::from_iter(full.into_iter());
+    ts
 }
