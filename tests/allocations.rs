@@ -3,6 +3,7 @@ extern crate qadapt;
 
 use qadapt::enter_protected;
 use qadapt::exit_protected;
+use qadapt::protection_level;
 use qadapt::QADAPT;
 
 #[global_allocator]
@@ -59,6 +60,11 @@ fn test_vec_push() {
     let mut v = Vec::new();
     enter_protected();
     v.push(0);
+    // We don't make it here in debug mode, but in release mode,
+    // pushing one element doesn't trigger an allocation. Instead,
+    // we use a box to force it onto the heap
+    assert_eq!(protection_level(), 1);
+    let _b = Box::new(v);
 }
 
 #[test]
@@ -89,7 +95,12 @@ fn test_vec_new() {
 #[should_panic]
 fn test_vec_with_one() {
     enter_protected();
-    let _v: Vec<u8> = Vec::with_capacity(1);
+    let v: Vec<u8> = Vec::with_capacity(1);
+    // We don't make it here in debug mode, but in release mode,
+    // pushing one element doesn't trigger an allocation. Instead,
+    // we use a box to force it onto the heap
+    assert_eq!(protection_level(), 1);
+    let _b = Box::new(v);
 }
 
 #[test]

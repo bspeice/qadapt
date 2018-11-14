@@ -20,6 +20,31 @@ type G = proc_macro::Group;
 type I = proc_macro::Ident;
 type P = proc_macro::Punct;
 
+fn release_guard(fn_name: &str) -> TokenStream {
+    let rel = I::new("release", Span::call_site());
+    let not_rel: Vec<TokenTree> = vec![
+        I::new("not", Span::call_site()).into(),
+        G::new(Delimiter::Parenthesis, TokenTree::Ident(rel).into()).into()
+    ];
+    let cfg_not_rel: Vec<TokenTree> = vec![
+        I::new("cfg", Span::call_site()).into(),
+        G::new(Delimiter::Parenthesis, TS::from_iter(not_rel.into_iter())).into()
+    ];
+    let guarded: Vec<TokenTree> = vec![
+        P::new('#', Spacing::Alone).into(),
+        G::new(Delimiter::Bracket, TS::from_iter(cfg_not_rel.into_iter())).into(),
+        P::new(':', Spacing::Joint).into(),
+        P::new(':', Spacing::Alone).into(),
+        I::new("qadapt", Span::call_site()).into(),
+        P::new(':', Spacing::Joint).into(),
+        P::new(':', Spacing::Alone).into(),
+        I::new(fn_name, Span::call_site()).into(),
+        G::new(Delimiter::Parenthesis, TokenStream::new()).into(),
+    ];
+
+    TS::from_iter(guarded.into_iter())
+}
+
 fn protected_body(fn_name: &str, args: G) -> TokenTree {
     let mut args_filtered = Vec::new();
     let mut waiting_for_comma = false;
@@ -40,30 +65,16 @@ fn protected_body(fn_name: &str, args: G) -> TokenTree {
         }
     }
     let args_group = G::new(Delimiter::Parenthesis, TS::from_iter(args_filtered));
-        
+
     let tt: Vec<TT> = vec![
-        P::new(':', Spacing::Joint).into(),
-        P::new(':', Spacing::Alone).into(),
-        I::new("qadapt", Span::call_site()).into(),
-        P::new(':', Spacing::Joint).into(),
-        P::new(':', Spacing::Alone).into(),
-        I::new("enter_protected", Span::call_site()).into(),
-        G::new(Delimiter::Parenthesis, TokenStream::new()).into(),
-        P::new(';', Spacing::Alone).into(),
+        G::new(Delimiter::Brace, release_guard("enter_protected")).into(),
         I::new("let", Span::call_site()).into(),
         I::new("__ret__", Span::call_site()).into(),
         P::new('=', Spacing::Alone).into(),
         I::new(fn_name, Span::call_site()).into(),
         args_group.into(),
         P::new(';', Spacing::Alone).into(),
-        P::new(':', Spacing::Joint).into(),
-        P::new(':', Spacing::Alone).into(),
-        I::new("qadapt", Span::call_site()).into(),
-        P::new(':', Spacing::Joint).into(),
-        P::new(':', Spacing::Alone).into(),
-        I::new("exit_protected", Span::call_site()).into(),
-        G::new(Delimiter::Parenthesis, TokenStream::new()).into(),
-        P::new(';', Spacing::Alone).into(),
+        G::new(Delimiter::Brace, release_guard("exit_protected")).into(),
         I::new("__ret__", Span::call_site()).into(),
     ];
 
