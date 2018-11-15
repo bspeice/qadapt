@@ -1,8 +1,8 @@
 [package]
-name = "qadapt"
+name = "qadapt-macro"
 version = "0.3.0"
 authors = ["Bradlee Speice <bradlee@speice.io>"]
-description = "The Quick And Dirty Allocation Profiling Tool"
+description = "The Quick And Dirty Allocation Profiling Tool - Support Macros"
 license = "Apache-2.0"
 readme = "README.md"
 categories = [
@@ -14,9 +14,5 @@ categories = [
 ]
 repository = "https://github.com/bspeice/qadapt.git"
 
-[dependencies]
-libc = "0.2"
-spin = "0.4"
-thread-id = "3.3"
-
-qadapt-macro = { version = "0.3.0", path = "./qadapt-macro" }
+[lib]
+proc-macro = true

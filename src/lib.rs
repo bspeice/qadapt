@@ -12,10 +12,14 @@
 //! for some helper macros to make working with QADAPT a bit easier.
 #![deny(missing_docs)]
 extern crate libc;
+extern crate qadapt_macro;
 extern crate spin;
 // thread_id is necessary because `std::thread::current()` panics if we have not yet
 // allocated a `thread_local!{}` it depends on.
 extern crate thread_id;
+
+// Re-export the proc macros to use by other code
+pub use qadapt_macro::*;
 
 use libc::c_void;
 use libc::free;
@@ -27,7 +31,6 @@ use std::thread;
 
 thread_local! {
     static PROTECTION_LEVEL: RwLock<usize> = RwLock::new(0);
-    static IS_STARTED: RwLock<bool> = RwLock::new(false);
 }
 
 /// The QADAPT allocator itself
@@ -39,10 +42,6 @@ pub fn enter_protected() {
     if thread::panicking() {
         return;
     }
-
-    IS_STARTED
-        .try_with(|b| assert!(*b.read(), "QADAPT not in use"))
-        .unwrap_or_else(|_e| ());
 
     PROTECTION_LEVEL
         .try_with(|v| {
@@ -69,17 +68,6 @@ pub fn exit_protected() {
             }
         })
         .unwrap_or_else(|_e| ());
-}
-
-/// Given a closure, run a function inside a guarded allocation block
-pub fn do_protected<T, C>(mut c: C) -> T
-where
-    C: FnMut() -> T
-{
-    enter_protected();
-    let ret = c();
-    exit_protected();
-    ret
 }
 
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
@@ -120,9 +108,6 @@ unsafe impl GlobalAlloc for QADAPT {
             return malloc(layout.size()) as *mut u8;
         }
 
-        IS_STARTED.try_with(|b| *b.write() = true)
-            .unwrap_or_else(|_e| ());
-
         // Because accessing PROTECTION_LEVEL has the potential to trigger an allocation,
         // we need to spin until we can claim the INTERNAL_ALLOCATION lock for our thread.
         claim_internal_alloc();
@@ -146,7 +131,7 @@ unsafe impl GlobalAlloc for QADAPT {
         }
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
         if alloc_immediate() {
             return free(ptr as *mut c_void);
         }
@@ -163,27 +148,15 @@ unsafe impl GlobalAlloc for QADAPT {
                 // Tripped a bad dealloc, but make sure further memory access during unwind
                 // doesn't have issues
                 PROTECTION_LEVEL.with(|v| *v.write() = 0);
+                /*
                 panic!(
                     "Unexpected deallocation for size {}, protection level: {}",
                     layout.size(),
                     v
                 )
+                */
             }
             _ => (),
         }
     }
-}
-
-#[macro_export]
-macro_rules! alloc_panic{
-    ($fn_body:expr) => {{
-        #[cfg(any(test, debug))]
-        {
-            ::qadapt::do_protected(|| $fn_body)
-        }
-        #[cfg(not(any(test, debug)))]
-        {
-            $fn_body
-        }
-    }}
 }
