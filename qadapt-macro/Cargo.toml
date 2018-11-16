@@ -15,7 +15,7 @@ categories = [
 repository = "https://github.com/bspeice/qadapt.git"
 
 [badges]
-maintenance = { static = "actively-maintained" }
+maintenance = { static = "actively-developed" }
 
 [lib]
 proc-macro = true
