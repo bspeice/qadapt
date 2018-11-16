@@ -12,7 +12,7 @@ static Q: QADAPT = QADAPT;
 fn test_copy() {
     enter_protected();
     let v = 0u8;
-    let v2 = v;
+    let _v2 = v;
     exit_protected();
 }
 
@@ -24,7 +24,7 @@ fn test_allocate() {
     exit_protected();
 }
 
-fn unit_result(b: bool) -> Result<(), ()> {
+fn return_unit_result(b: bool) -> Result<(), ()> {
     if b {
         Ok(())
     } else {
@@ -33,16 +33,16 @@ fn unit_result(b: bool) -> Result<(), ()> {
 }
 
 #[test]
-fn test_unit_result() {
+fn unit_result() {
     enter_protected();
-    unit_result(true).unwrap();
-    unit_result(false).unwrap_err();
+    return_unit_result(true).unwrap();
+    return_unit_result(false).unwrap_err();
     exit_protected();
 }
 
 #[test]
 #[should_panic]
-fn test_vec_push() {
+fn vec_push() {
     let mut v = Vec::new();
     enter_protected();
     v.push(0);
@@ -54,7 +54,7 @@ fn test_vec_push() {
 }
 
 #[test]
-fn test_vec_push_capacity() {
+fn vec_push_capacity() {
     let mut v = Vec::with_capacity(1);
     enter_protected();
     v.push(0);
@@ -64,14 +64,14 @@ fn test_vec_push_capacity() {
 }
 
 #[test]
-fn test_vec_with_zero() {
+fn vec_with_zero() {
     enter_protected();
     let _v: Vec<u8> = Vec::with_capacity(0);
     exit_protected();
 }
 
 #[test]
-fn test_vec_new() {
+fn vec_new() {
     enter_protected();
     let _v: Vec<u8> = Vec::new();
     exit_protected();
@@ -79,7 +79,7 @@ fn test_vec_new() {
 
 #[test]
 #[should_panic]
-fn test_vec_with_one() {
+fn vec_with_one() {
     enter_protected();
     let v: Vec<u8> = Vec::with_capacity(1);
     // We don't make it here in debug mode, but in release mode,

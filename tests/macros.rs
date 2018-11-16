@@ -87,3 +87,48 @@ fn return_result(r: Result<usize, io::Error>) -> Result<Result<usize, io::Error>
 fn macro_return_result() {
     return_result(Ok(16)).unwrap().unwrap();
 }
+
+#[allocate_panic]
+fn branching_return(a: bool, b: bool, c: bool) -> u8 {
+    if a {
+        if b {
+            if c {
+                return 1;
+            } else {
+                return 2;
+            }
+        } else {
+            if c {
+                return 3;
+            } else {
+                return 4;
+            }
+        }
+    } else {
+        if b {
+            if c {
+                return 5;
+            } else {
+                return 6;
+            }
+        } else {
+            if c {
+                return 7;
+            } else {
+                return 8;
+            }
+        }
+    }
+}
+
+#[test]
+fn macro_branching_return() {
+    assert_eq!(1, branching_return(true, true, true));
+    assert_eq!(2, branching_return(true, true, false));
+    assert_eq!(3, branching_return(true, false, true));
+    assert_eq!(4, branching_return(true, false, false));
+    assert_eq!(5, branching_return(false, true, true));
+    assert_eq!(6, branching_return(false, true, false));
+    assert_eq!(7, branching_return(false, false, true));
+    assert_eq!(8, branching_return(false, false, false));
+}

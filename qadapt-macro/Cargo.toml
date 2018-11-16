@@ -1,6 +1,6 @@
 [package]
 name = "qadapt-macro"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Bradlee Speice <bradlee@speice.io>"]
 description = "The Quick And Dirty Allocation Profiling Tool - Support Macros"
 license = "Apache-2.0"
