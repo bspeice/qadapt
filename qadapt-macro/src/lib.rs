@@ -106,6 +106,18 @@ fn protected_body(fn_body: Group) -> TokenTree {
     ))
 }
 
+fn contains_return(ts: TokenStream) -> bool {
+    for tt in ts.into_iter() {
+        match tt {
+            TokenTree::Group(ref g) => if contains_return(g.stream()) { return true },
+            TokenTree::Ident(ref i) if i.to_string() == "return" => return true,
+            _ => (),
+        }
+    }
+
+    false
+}
+
 /// Set up the QADAPT allocator to trigger a panic if any allocations happen during
 /// calls to this function.
 ///
@@ -114,6 +126,16 @@ fn protected_body(fn_body: Group) -> TokenTree {
 /// separate thread, QADAPT will not trigger a panic.
 #[proc_macro_attribute]
 pub fn allocate_panic(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    if contains_return(item.clone()) {
+        let mut iter = item.clone().into_iter();
+        iter.next();
+        let fn_name = iter.next().unwrap();
+        eprintln!("QADAPT does not currently support `return` \
+                   statements in functions. Function named `{}` \
+                   DOES NOT have allocation guards in place.", fn_name);
+        return item;
+    }
+
     let mut protected_fn: Vec<TokenTree> = Vec::new();
 
     let mut item_iter = item.into_iter();

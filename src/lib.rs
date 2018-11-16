@@ -131,7 +131,7 @@ unsafe impl GlobalAlloc for QADAPT {
         }
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if alloc_immediate() {
             return free(ptr as *mut c_void);
         }
@@ -148,13 +148,11 @@ unsafe impl GlobalAlloc for QADAPT {
                 // Tripped a bad dealloc, but make sure further memory access during unwind
                 // doesn't have issues
                 PROTECTION_LEVEL.with(|v| *v.write() = 0);
-                /*
                 panic!(
                     "Unexpected deallocation for size {}, protection level: {}",
                     layout.size(),
                     v
                 )
-                */
             }
             _ => (),
         }

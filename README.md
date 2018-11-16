@@ -1,6 +1,9 @@
 The Quick And Dirty Allocation Profiling Tool
 =============================================
 
+[![crates.io](https://img.shields.io/crates/v/qadapt.svg)](https://crates.io/crates/qadapt)
+[![docs.rs](https://docs.rs/qadapt/badge.svg)](https://docs.rs/qadapt/)
+
 This allocator is a helper for writing high-performance code that is allocation/drop free;
 for functions annotated with `#[allocate_panic]`, QADAPT will detect when allocations/drops
 happen during their execution (and execution of any functions they call) and throw a
