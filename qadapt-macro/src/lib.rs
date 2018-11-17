@@ -120,17 +120,26 @@ fn protected_body(fn_body: Group) -> TokenTree {
 /// to `return` with an exit guard.
 fn escape_return(ts: TokenStream) -> TokenStream {
     let mut protected: Vec<TokenTree> = Vec::new();
+    let mut in_closure: bool = false;
 
     let mut tt_iter = ts.into_iter();
     while let Some(tt) = tt_iter.next() {
         let mut tokens = match tt {
-            TokenTree::Group(ref g) if g.delimiter() == Delimiter::Brace => {
+            TokenTree::Group(ref g) if g.delimiter() == Delimiter::Brace && !in_closure => {
                 vec![group!(Delimiter::Brace, escape_return(g.stream()))]
             }
-            TokenTree::Ident(ref i) if i.to_string() == "return" => vec![
+            TokenTree::Ident(ref i) if i.to_string() == "return" && !in_closure => vec![
                 group!(Delimiter::Brace, release_guard("exit_protected")),
                 tt.clone(),
             ],
+            TokenTree::Punct(ref p) if p.as_char() == '|' => {
+                in_closure = true;
+                vec![tt.clone()]
+            }
+            TokenTree::Punct(ref p) if p.as_char() == ';' => {
+                in_closure = false;
+                vec![tt.clone()]
+            }
             t => vec![t],
         };
 

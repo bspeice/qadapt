@@ -132,3 +132,20 @@ fn macro_branching_return() {
     assert_eq!(7, branching_return(false, false, true));
     assert_eq!(8, branching_return(false, false, false));
 }
+
+fn run_closure(x: impl Fn(bool, bool) -> bool) -> bool {
+    x(true, false)
+}
+
+#[allocate_panic]
+fn example_closure() {
+    let c = run_closure(|a: bool, b| return a && b);
+    assert!(!c);
+    let x = || return true;
+    assert!(x());
+}
+
+#[test]
+fn macro_closure() {
+    example_closure()
+}
