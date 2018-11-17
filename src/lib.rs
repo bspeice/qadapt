@@ -1,9 +1,9 @@
-//! The Quick And Dirty Allocation Profiling Tool
+//! # The Quick And Dirty Allocation Profiling Tool
 //!
 //! This allocator is a helper for writing high-performance code that is allocation/drop free;
 //! for functions annotated with `#[allocate_panic]`, QADAPT will detect when allocations/drops
 //! happen during their execution (and execution of any functions they call) and throw a
-//! thread panic if this occurs. QADAPT-related code is stripped out during release builds,
+//! thread panic if this occurs. QADAPT-related code is *stripped out during release builds*,
 //! so no worries about random allocations crashing in production.
 //!
 //! Currently this crate is Nightly-only, but will work once `const fn` is in Stable.

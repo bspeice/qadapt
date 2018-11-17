@@ -152,9 +152,10 @@ fn escape_return(ts: TokenStream) -> TokenStream {
 /// Set up the QADAPT allocator to trigger a panic if any allocations happen during
 /// calls to this function.
 ///
-/// QADAPT will only track allocations in the thread that calls this function;
+/// QADAPT will only track allocations in the current function call;
 /// if (for example) this function receives the results of an allocation in a
-/// separate thread, QADAPT will not trigger a panic.
+/// separate thread, or defers allocations via closure/Future, those results
+/// will not trigger an error.
 #[proc_macro_attribute]
 pub fn allocate_panic(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut protected_fn: Vec<TokenTree> = Vec::new();
