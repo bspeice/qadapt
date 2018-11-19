@@ -58,35 +58,6 @@ macro_rules! token_stream {
     };
 }
 
-#[rustfmt::skip]
-fn release_guard(fn_name: &str) -> TokenStream {
-    // #[cfg(any(debug, test))]
-    // { ::qadapt::`fn_name`() }
-    token_stream!(
-        punct!('#', Spacing::Alone),
-        group!(Delimiter::Bracket, token_stream!(
-            ident!("cfg"),
-            group!(Delimiter::Parenthesis, token_stream!(
-                ident!("any"),
-                group!(Delimiter::Parenthesis, token_stream!(
-                    ident!("debug"),
-                    punct!(',', Spacing::Alone),
-                    ident!("test")
-                )),
-            )),
-        )),
-        group!(Delimiter::Brace, token_stream!(
-            punct!(':', Spacing::Joint),
-            punct!(':', Spacing::Alone),
-            ident!("qadapt"),
-            punct!(':', Spacing::Joint),
-            punct!(':', Spacing::Alone),
-            ident!(fn_name),
-            group!(Delimiter::Parenthesis)
-        ))
-    )
-}
-
 /// Generate the body of a function that is protected from making allocations.
 /// The code is conditionally compiled so that all QADAPT-related bits
 /// will be removed for release/bench builds, making the proc_macro safe
@@ -94,7 +65,15 @@ fn release_guard(fn_name: &str) -> TokenStream {
 #[rustfmt::skip]
 fn protected_body(fn_body: Group) -> TokenTree {
     group!(Delimiter::Brace, token_stream!(
-        group!(Delimiter::Brace, release_guard("enter_protected")),
+        group!(Delimiter::Brace, token_stream!(
+            punct!(':', Spacing::Joint),
+            punct!(':', Spacing::Alone),
+            ident!("qadapt"),
+            punct!(':', Spacing::Joint),
+            punct!(':', Spacing::Alone),
+            ident!("enter_protected"),
+            group!(Delimiter::Parenthesis)
+        )),
         ident!("let"),
         ident!("__ret__"),
         punct!('=', Spacing::Alone),
@@ -110,7 +89,15 @@ fn protected_body(fn_body: Group) -> TokenTree {
             ))
         )),
         group!(Delimiter::Brace, token_stream!(
-            group!(Delimiter::Brace, release_guard("exit_protected")),
+            group!(Delimiter::Brace, token_stream!(
+                punct!(':', Spacing::Joint),
+                punct!(':', Spacing::Alone),
+                ident!("qadapt"),
+                punct!(':', Spacing::Joint),
+                punct!(':', Spacing::Alone),
+                ident!("exit_protected"),
+                group!(Delimiter::Parenthesis)
+            )),
             ident!("__ret__")
         ))
     ))
@@ -129,7 +116,18 @@ fn escape_return(ts: TokenStream) -> TokenStream {
                 vec![group!(Delimiter::Brace, escape_return(g.stream()))]
             }
             TokenTree::Ident(ref i) if i.to_string() == "return" && !in_closure => vec![
-                group!(Delimiter::Brace, release_guard("exit_protected")),
+                group!(
+                    Delimiter::Brace,
+                    token_stream!(
+                        punct!(':', Spacing::Joint),
+                        punct!(':', Spacing::Alone),
+                        ident!("qadapt"),
+                        punct!(':', Spacing::Joint),
+                        punct!(':', Spacing::Alone),
+                        ident!("exit_protected"),
+                        group!(Delimiter::Parenthesis)
+                    )
+                ),
                 tt.clone(),
             ],
             TokenTree::Punct(ref p) if p.as_char() == '|' => {

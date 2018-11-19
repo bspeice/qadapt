@@ -9,11 +9,6 @@ static Q: QADAPT = QADAPT;
 
 #[allocate_panic]
 fn no_allocate() {
-    #[cfg(not(release))]
-    {
-        let _v = 0;
-    }
-    assert_eq!(::qadapt::protection_level(), 1);
     let _v: Vec<()> = Vec::with_capacity(0);
 }
 
@@ -148,4 +143,17 @@ fn example_closure() {
 #[test]
 fn macro_closure() {
     example_closure()
+}
+
+#[test]
+#[allocate_panic]
+fn macro_release_safe() {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(1, ::qadapt::protection_level());
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        assert_eq!(0, ::qadapt::protection_level());
+    }
 }

@@ -17,7 +17,7 @@ fn test_copy() {
 }
 
 #[test]
-#[should_panic]
+#[cfg_attr(debug_assertions, should_panic)]
 fn test_allocate() {
     enter_protected();
     let _x = Box::new(12);
@@ -90,7 +90,7 @@ fn vec_with_one() {
 }
 
 #[test]
-#[should_panic]
+#[cfg_attr(debug_assertions, should_panic)]
 fn exit_too_often() {
     enter_protected();
     exit_protected();
@@ -98,7 +98,7 @@ fn exit_too_often() {
 }
 
 #[test]
-#[should_panic]
+#[cfg_attr(debug_assertions, should_panic)]
 fn intentional_drop() {
     let v: Vec<()> = Vec::new();
     let v = Box::new(v);

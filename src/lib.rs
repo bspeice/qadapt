@@ -39,42 +39,55 @@ pub struct QADAPT;
 /// Let QADAPT know that we are now entering a protected region and that
 /// panics should be triggered if allocations/drops happen while we are running.
 pub fn enter_protected() {
-    if thread::panicking() {
-        return;
-    }
+    #[cfg(debug_assertions)]
+    {
+        if thread::panicking() {
+            return;
+        }
 
-    PROTECTION_LEVEL
-        .try_with(|v| {
-            *v.write() += 1;
-        })
-        .unwrap_or_else(|_e| ());
+        PROTECTION_LEVEL
+            .try_with(|v| {
+                *v.write() += 1;
+            })
+            .unwrap_or_else(|_e| ());
+    }
 }
 
 /// Let QADAPT know that we are exiting a protected region. Will panic
 /// if we attempt to [`exit_protected`] more times than we [`enter_protected`].
 pub fn exit_protected() {
-    if thread::panicking() {
-        return;
-    }
+    #[cfg(debug_assertions)]
+    {
+        if thread::panicking() {
+            return;
+        }
 
-    PROTECTION_LEVEL
-        .try_with(|v| {
-            let val = { *v.read() };
-            match val {
-                v if v == 0 => panic!("Attempt to exit protected too many times"),
-                _ => {
-                    *v.write() -= 1;
+        PROTECTION_LEVEL
+            .try_with(|v| {
+                let val = { *v.read() };
+                match val {
+                    v if v == 0 => panic!("Attempt to exit protected too many times"),
+                    _ => {
+                        *v.write() -= 1;
+                    }
                 }
-            }
-        })
-        .unwrap_or_else(|_e| ());
+            })
+            .unwrap_or_else(|_e| ());
+    }
 }
 
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
 /// Get the current "protection level" in QADAPT: calls to enter_protected() - exit_protected()
 pub fn protection_level() -> usize {
-    PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
+    #[cfg(debug_assertions)]
+    {
+        PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        0
+    }
 }
 
 fn claim_internal_alloc() {
