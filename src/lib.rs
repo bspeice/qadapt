@@ -12,6 +12,8 @@
 //! for some helper macros to make working with QADAPT a bit easier.
 #![deny(missing_docs)]
 extern crate libc;
+#[macro_use]
+extern crate log;
 extern crate qadapt_macro;
 extern crate spin;
 // thread_id is necessary because `std::thread::current()` panics if we have not yet
@@ -45,6 +47,11 @@ pub fn enter_protected() {
             return;
         }
 
+        if *IS_ACTIVE.read() == false {
+            *IS_ACTIVE.write() = true;
+            warn!("QADAPT not initialized when using allocation guards; please verify `#[global_allocator]` is set!");
+        }
+
         PROTECTION_LEVEL
             .try_with(|v| {
                 *v.write() += 1;
@@ -76,6 +83,7 @@ pub fn exit_protected() {
     }
 }
 
+static IS_ACTIVE: RwLock<bool> = RwLock::new(false);
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
 /// Get the current "protection level" in QADAPT: calls to enter_protected() - exit_protected()
@@ -115,6 +123,10 @@ fn alloc_immediate() -> bool {
 
 unsafe impl GlobalAlloc for QADAPT {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if *IS_ACTIVE.read() == false {
+            *IS_ACTIVE.write() = true;
+        }
+
         // If we're attempting to allocate our PROTECTION_LEVEL thread local,
         // just allow it through
         if alloc_immediate() {
