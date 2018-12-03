@@ -49,9 +49,10 @@ after_success: |
         cd kcov-master && \
             mkdir build && \
             cd build && \
-            cmake .. && \
-            make && \
-            make install DESTDIR=../../kcov-build && \
+              cmake .. && \
+              make && \
+              make install DESTDIR=../../kcov-build && \
+              cd ../.. && \
         rm -rf kcov-master && \
         for file in target/debug/*-*[^\.d]; do \
           mkdir -p "target/cov/$(basename $file)"; \
