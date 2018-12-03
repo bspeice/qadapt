@@ -1,0 +1,75 @@
+# Created by the Rust CI generator: https://github.com/bspeice/rust-ci
+dist: trusty
+language: rust
+# Used during coverage to build kcov
+addons.apt.packages:
+  - libcurl4-openssl-dev
+  - libelf-dev
+  - libdw-dev
+  - binutils-dev
+
+matrix:
+  include:
+    # Uniquely identifies the build that uploads to codecov.io
+    - env: CODECOV=TRUE
+      rust: nightly
+    # Uniquely identifies the build that uploads to crates.io
+    - env: CRATESIO=TRUE
+      rust: nightly
+    - rust: nightly
+    # To build against specific Rust versions, include an item like the following:
+    # - rust: 1.30.0
+    - rust: nightly
+      os: osx
+
+before_install:
+  - set -e
+  - rustup self update
+
+install:
+  - source ~/.cargo/env || true
+
+script:
+  - rustup component add rustfmt-preview
+  - cargo fmt --all -- --check
+  - |
+    if [ -z "$TRAVIS_TAG" ]; then
+      cargo test
+      cargo test --release
+    fi
+
+after_script: set +e
+after_success: |
+    # Build test coverage statistics
+    wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz && \
+    tar xzf master.tar.gz && \
+    cd kcov-master && \
+		mkdir build && \
+		cd build && \
+		cmake .. && \
+		make && \
+		make install DESTDIR=../../kcov-build && \
+    rm -rf kcov-master && \
+    for file in target/debug/*-*[^\.d]; do \
+      mkdir -p "target/cov/$(basename $file)"; \
+      ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; \
+    done && \
+    bash <(curl -s https://codecov.io/bash) && \
+    echo "Uploaded code coverage"
+
+branches:
+  only:
+    # Release tags - vX.Y.Z
+    - /^v\d+\.\d+\.\d+.*$/
+    - master
+
+
+deploy:
+  - provider: cargo
+    on:
+      condition: "$CRATESIO = TRUE"
+      tags: true
+    skip_cleanup: true
+    token: "0I4H/gLnBP0G26lTWKAWTVzgBNulh1Ih4XIYtAtOSf5TTAH4J7h634qPCVU/D73RhyYQKIUT9FxtY107tPNDKqFDY0QK6WgJJIsHJw4LuS2A2XdPp7i5lU8LMc58o0Qq2wGV+1Fy5QLfMt0OfKJcu0QdZiOYffOL5Vquj6srlq0xhslD3Xit87P4H5tqQYHoKXNwkWFZhRPOMep14oU1F7gUrAFMFIxnHxpii06v3TYz1pmQ4xxfO8ElM8br6uhahgngAnJSmN57kPWpU43g2zltJEH6Hi0HDu0mzKTbkqFv/JXSuVd43vC6p8NGURdojTII3zsZ5Cg4R6Xnd/z++2QH71S9eD3FtyVp0pwprJxjLc2BLx/b53bD6i8YR2wLpuPk+d2Ghr04zJRPNNm2DK4Hpq2pk3pt06l3YnkJU3hb7Fbt8dacXag/3y6lf70Mj58bVcNuItVWF1u7+DTaVM5XdsD7ZerYRm0E4r5IbukEwz4Cjk4UCbFZgFk46jsG+AQ3ngIw1wjwAx16tpCmRKUNwR1h31TlKFm9ihE/kDiabia56jYJyzWhSu5GHppSEWmHBLajEse7SowpDTIAyJLKD3QG6/YT+ukulkb1lweS6AvlYaKiJo0H2h7ndUhXDMn9SnJUTQmFcnQ3N125l+NC6BY+Z1P/Sk7fKXmy55k="
+
+     
