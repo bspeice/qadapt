@@ -2,13 +2,10 @@
 
 [![crates.io](https://img.shields.io/crates/v/qadapt.svg)](https://crates.io/crates/qadapt)
 [![docs.rs](https://docs.rs/qadapt/badge.svg)](https://docs.rs/qadapt/)
-[![travisci](https://travis-ci.org/bspeice/qadapt.svg?branch=master)](https://travis-ci.org/bspeice/qadapt)
-<!--
-    AppVeyor badges use a unique ID that we're not able to compute ahead of time.
-    Please see https://ci.appveyor.com/project/bspeice/qadapt/settings/badges
-    to set up the badge
--->
 [![codecov](https://codecov.io/gh/bspeice/qadapt/branch/master/graph/badge.svg)](https://codecov.io/gh/bspeice/qadapt)
+[![travisci](https://travis-ci.org/bspeice/qadapt.svg?branch=master)](https://travis-ci.org/bspeice/qadapt)
+[![appveyor](https://ci.appveyor.com/api/projects/status/km1p081tkjcptn1w/branch/master?svg=true)](https://ci.appveyor.com/project/bspeice/qadapt/branch/master)
+
 
 ---
 # The Quick And Dirty Allocation Profiling Tool
