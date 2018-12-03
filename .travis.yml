@@ -2,11 +2,13 @@
 dist: trusty
 language: rust
 # Used during coverage to build kcov
-addons.apt.packages:
-  - libcurl4-openssl-dev
-  - libelf-dev
-  - libdw-dev
-  - binutils-dev
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
 
 matrix:
   include:
@@ -41,7 +43,7 @@ script:
 after_script: set +e
 after_success: |
     # Build test coverage statistics
-    if [ -z "$CODECOV" ]; then
+    if [ -n "$CODECOV" ]; then
         wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz && \
         tar xzf master.tar.gz && \
         cd kcov-master && \
