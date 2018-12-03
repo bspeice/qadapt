@@ -2,20 +2,12 @@ environment:
   matrix:
     # MinGW
     - TARGET: i686-pc-windows-gnu
-      RUST_VERSION: stable
+      RUST_VERSION: nightly
     - TARGET: x86_64-pc-windows-gnu
-      RUST_VERSION: stable
+      RUST_VERSION: nightly
 
     # MSVC
     - TARGET: i686-pc-windows-msvc
-      RUST_VERSION: stable
-    - TARGET: x86_64-pc-windows-msvc
-      RUST_VERSION: stable
-
-    # Testing other channels
-    - TARGET: x86_64-pc-windows-gnu
-      RUST_VERSION: 1.30.1
-    - TARGET: x86_64-pc-windows-gnu
       RUST_VERSION: nightly
     - TARGET: x86_64-pc-windows-msvc
       RUST_VERSION: nightly
