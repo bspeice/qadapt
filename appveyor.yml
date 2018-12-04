@@ -1,14 +1,14 @@
 environment:
   matrix:
     # MinGW
-    - TARGET: i686-pc-windows-gnu
-      RUST_VERSION: nightly
-    - TARGET: x86_64-pc-windows-gnu
-      RUST_VERSION: nightly
+    # - TARGET: i686-pc-windows-gnu
+    #   RUST_VERSION: nightly
+    # - TARGET: x86_64-pc-windows-gnu
+    #   RUST_VERSION: nightly
 
     # MSVC
-    - TARGET: i686-pc-windows-msvc
-      RUST_VERSION: nightly
+    # - TARGET: i686-pc-windows-msvc
+    #   RUST_VERSION: nightly
     - TARGET: x86_64-pc-windows-msvc
       RUST_VERSION: nightly
 
@@ -28,7 +28,6 @@ install:
 test_script:
   # If you need to run additional steps during testing, they should be placed
   # inside this block
-  - set RUST_BACKTRACE=1
   - if [%APPVEYOR_REPO_TAG%]==[false] (
       cargo test --target %TARGET% &&
       cargo test --target %TARGET% --release
