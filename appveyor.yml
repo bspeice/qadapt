@@ -29,6 +29,7 @@ test_script:
   # If you need to run additional steps during testing, they should be placed
   # inside this block
   - if [%APPVEYOR_REPO_TAG%]==[false] (
+      set RUST_BACKTRACE=1 &&
       cargo test --target %TARGET% &&
       cargo test --target %TARGET% --release
     )
