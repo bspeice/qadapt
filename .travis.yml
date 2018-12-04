@@ -10,6 +10,11 @@ addons:
       - libdw-dev
       - binutils-dev
 
+env:
+  global:
+    # CARGO_TOKEN
+    secure: sU1O2DIBOmCN0W5sAwIfsNr5AtGb2zGlIH3uNo9uuiVvzpL0iyoPQThSjOIHbZlpcn3OttpyH/8jltdXBJPrDmO+JzBoHkZHahUZgUVFdanqvttOQfKtTSg2V90WABVWqNWASuAZwGEbJ2NhSTHNj3qYS0A8kMaatYA+ezdrFXAOaaXgLVdUP/hFSmQeTYDPNtAVxcHxzSpCDInbkfQn3A5940lPGXzQ7bs/2p6WwtIEUuKFOOYt715hxmzMb2vyd/D65h8TjYG2LXKfBL84hjyn2DpmAIkZszHNkZ5UUzmU8WO2WR2CGgol6+qhkpZcupv8kZQSzT1ZvU5ZGRAClsr8v7zUA57RB/gkVRdOkSgE8pzC4DTdcDSNau3r03ihAF26nP7bz/Icnjm506UJVJCgZy3+tmMWdkppb+q/47LZ4qnnJtcXaWDVy1zVs/nyVL2xm8W3ZNQcFsxP0t86qh4U3S+ylpSDcl9g39VHWtGMdlt0oQ1RsaAOJ5avgUsJO9uLXkOlEc3GadooSpJ8A36kdK9/I3KTDMgk5RLK03jRvgaEZ2W4Xbu4YKO0LO4OENVyuFhhn4/KZSGbKBnuS/g45X8GEWDoiEly8uX8UBwL/MKB8hMUlFSJzxQMG1hAtSIZM6tX+wl2Mjg1h4SBqBjXK8BjHeEXYmw6IT7GNkg=
+
 matrix:
   include:
     # Uniquely identifies the build that uploads to codecov.io
@@ -42,8 +47,13 @@ script:
 
 after_script: set +e
 after_success: |
-    # Build test coverage statistics
-    if [ -n "$CODECOV" ]; then
+    if [ -n "$TRAVIS_TAG" ]; then
+        cd qadapt-macro &&
+        cargo publish --token "$CARGO_TOKEN" &&
+        cd .. &&
+        cargo publish --token "$CARGO_TOKEN"
+    elif [ -n "$CODECOV" ] && [ -z "$TRAVIS_TAG" ]; then
+        # Build test coverage statistics
         wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz && \
         tar xzf master.tar.gz && \
         cd kcov-master && \
@@ -64,17 +74,5 @@ after_success: |
 
 branches:
   only:
-    # Release tags - vX.Y.Z
-    - /^v\d+\.\d+\.\d+.*$/
-    - master
-
-
-deploy:
-  - provider: cargo
-    on:
-      condition: "$CRATESIO = TRUE"
-      tags: true
-    skip_cleanup: true
-    token: "0I4H/gLnBP0G26lTWKAWTVzgBNulh1Ih4XIYtAtOSf5TTAH4J7h634qPCVU/D73RhyYQKIUT9FxtY107tPNDKqFDY0QK6WgJJIsHJw4LuS2A2XdPp7i5lU8LMc58o0Qq2wGV+1Fy5QLfMt0OfKJcu0QdZiOYffOL5Vquj6srlq0xhslD3Xit87P4H5tqQYHoKXNwkWFZhRPOMep14oU1F7gUrAFMFIxnHxpii06v3TYz1pmQ4xxfO8ElM8br6uhahgngAnJSmN57kPWpU43g2zltJEH6Hi0HDu0mzKTbkqFv/JXSuVd43vC6p8NGURdojTII3zsZ5Cg4R6Xnd/z++2QH71S9eD3FtyVp0pwprJxjLc2BLx/b53bD6i8YR2wLpuPk+d2Ghr04zJRPNNm2DK4Hpq2pk3pt06l3YnkJU3hb7Fbt8dacXag/3y6lf70Mj58bVcNuItVWF1u7+DTaVM5XdsD7ZerYRm0E4r5IbukEwz4Cjk4UCbFZgFk46jsG+AQ3ngIw1wjwAx16tpCmRKUNwR1h31TlKFm9ihE/kDiabia56jYJyzWhSu5GHppSEWmHBLajEse7SowpDTIAyJLKD3QG6/YT+ukulkb1lweS6AvlYaKiJo0H2h7ndUhXDMn9SnJUTQmFcnQ3N125l+NC6BY+Z1P/Sk7fKXmy55k="
-
-     
+  - "/^v\\d+\\.\\d+\\.\\d+.*$/"
+  - master
