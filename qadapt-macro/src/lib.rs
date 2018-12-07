@@ -155,7 +155,7 @@ fn escape_return(ts: TokenStream) -> TokenStream {
 /// separate thread, or defers allocations via closure/Future, those results
 /// will not trigger an error.
 #[proc_macro_attribute]
-pub fn allocate_panic(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn no_alloc(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut protected_fn: Vec<TokenTree> = Vec::new();
     let mut item_iter = item.into_iter();
 

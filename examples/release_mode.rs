@@ -1,10 +1,10 @@
-use qadapt::allocate_panic;
+use qadapt::no_alloc;
 use qadapt::QADAPT;
 
 #[global_allocator]
 static Q: QADAPT = QADAPT;
 
-#[allocate_panic]
+#[no_alloc]
 fn does_allocate() -> Box<u8> {
     Box::new(0)
 }
