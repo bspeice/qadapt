@@ -28,4 +28,3 @@ fn early_return_boxing() {
         panic!("Intentional")
     }
 }
-
