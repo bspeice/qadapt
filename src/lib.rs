@@ -50,7 +50,6 @@
 //! }
 #![deny(missing_docs)]
 
-use log::warn;
 // thread_id is necessary because `std::thread::current()` panics if we have not yet
 // allocated a `thread_local!{}` it depends on.
 use thread_id;
