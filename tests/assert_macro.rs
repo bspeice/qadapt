@@ -21,6 +21,11 @@ fn into_box() -> Box<usize> {
 #[test]
 #[should_panic]
 fn early_return_boxing() {
-    into_box();
+    if cfg!(debug_assertions) {
+        // The release-mode compiler is able to optimize through the Box
+        into_box();
+    } else {
+        panic!("Intentional")
+    }
 }
 
