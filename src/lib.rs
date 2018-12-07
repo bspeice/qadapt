@@ -1,4 +1,4 @@
-//! # QADAPT - `debug_assert!` for your memory
+//! ## `debug_assert!` for your memory usage
 //!
 //! This allocator is a helper for writing high-performance code that is memory-sensitive;
 //! a thread panic will be triggered if a function annotated with `#[no_alloc]`,

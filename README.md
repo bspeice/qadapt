@@ -6,9 +6,8 @@
 [![travisci](https://travis-ci.org/bspeice/qadapt.svg?branch=master)](https://travis-ci.org/bspeice/qadapt)
 [![appveyor](https://ci.appveyor.com/api/projects/status/km1p081tkjcptn1w/branch/master?svg=true)](https://ci.appveyor.com/project/bspeice/qadapt/branch/master)
 
-
 ---
-# QADAPT - `debug_assert!` for your memory
+## `debug_assert!` for your memory usage
 
 This allocator is a helper for writing high-performance code that is memory-sensitive;
 a thread panic will be triggered if a function annotated with `#[no_alloc]`,
@@ -42,7 +41,7 @@ use qadapt::no_alloc;
 
 #[no_alloc]
 fn do_math() -> u8 {
-2 + 2
+    2 + 2
 }
 ```
 
@@ -51,10 +50,10 @@ fn do_math() -> u8 {
 use qadapt::assert_no_alloc;
 
 fn do_work() {
-// This code is allowed to trigger an allocation
-let b = Box::new(8);
-
-// This code would panic if an allocation occurred inside it
-let x = assert_no_alloc!(*b + 2);
-assert_eq!(x, 10);
+    // This code is allowed to trigger an allocation
+    let b = Box::new(8);
+    
+    // This code would panic if an allocation occurred inside it
+    let x = assert_no_alloc!(*b + 2);
+    assert_eq!(x, 10);
 }

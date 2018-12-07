@@ -13,7 +13,7 @@ readme: README.md
 
 README.md: src/lib.rs
 	@sed -i '/---/q' README.md
-	@cat src/lib.rs | grep '//!' | sed 's/^\/\/\! *//g' >> README.md
+	@cat src/lib.rs | grep '//!' | sed -E 's/^\/\/\! ?//g' >> README.md
 
 .PHONY: doc
 doc: readme contributors
