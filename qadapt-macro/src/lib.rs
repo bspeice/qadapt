@@ -111,7 +111,7 @@ fn escape_return(ts: TokenStream) -> TokenStream {
 
     let mut tt_iter = ts.into_iter();
     while let Some(tt) = tt_iter.next() {
-        let mut tokens = match tt {
+        let tokens = match tt {
             TokenTree::Group(ref g) if g.delimiter() == Delimiter::Brace && !in_closure => {
                 vec![group!(Delimiter::Brace, escape_return(g.stream()))]
             }
@@ -155,7 +155,7 @@ fn escape_return(ts: TokenStream) -> TokenStream {
 /// separate thread, or defers allocations via closure/Future, those results
 /// will not trigger an error.
 #[proc_macro_attribute]
-pub fn allocate_panic(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn no_alloc(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut protected_fn: Vec<TokenTree> = Vec::new();
     let mut item_iter = item.into_iter();
 

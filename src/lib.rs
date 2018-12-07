@@ -1,24 +1,58 @@
-//! # The Quick And Dirty Allocation Profiling Tool
+//! ## `debug_assert!` for your memory usage
 //!
-//! This allocator is a helper for writing high-performance code that is allocation/drop free;
-//! for functions annotated with `#[allocate_panic]`, QADAPT will detect when allocations/drops
-//! happen during their execution (and execution of any functions they call) and throw a
-//! thread panic if this occurs. QADAPT-related code is *stripped out during release builds*,
-//! so no worries about random allocations crashing in production.
+//! This allocator is a helper for writing high-performance code that is memory-sensitive;
+//! a thread panic will be triggered if a function annotated with `#[no_alloc]`,
+//! or code inside an `assert_no_alloc!` macro interacts with the allocator in any way.
+//! Wanton allocations and unforeseen drops no more - this library lets you focus on
+//! writing code without worrying if Rust properly managed to inline the variable into the stack.
 //!
-//! Currently this crate is Nightly-only, but will work once `const fn` is in Stable.
+//! Now, an allocator blowing up in production is a scary thought; that's why QADAPT
+//! is designed to strip its own code out whenever you're running with a release build.
+//! Just like the [`debug_assert!` macro](https://doc.rust-lang.org/std/macro.debug_assert.html)
+//! in Rust's standard library, it's safe to use without worrying about a unforeseen
+//! circumstance causing your application to crash.
 //!
-//! Please also take a look at [qadapt-macro](https://github.com/bspeice/qadapt/tree/master/qadapt-macro)
-//! for some helper macros to make working with QADAPT a bit easier.
+//! # Usage
+//!
+//! Actually making use of QADAPT is straight-forward. To set up the allocator,
+//! place the following snippet in either your program binaries (main.rs) or tests:
+//!
+//! ```rust,ignore
+//! use qadapt::QADAPT;
+//!
+//! #[global_allocator]
+//! static Q: QADAPT = QADAPT;
+//! ```
+//!
+//! After that, there are two ways of telling QADAPT that it should trigger a panic:
+//!
+//! 1. Annotate functions with the `#[no_alloc]` proc macro:
+//! ```rust,no_run
+//! use qadapt::no_alloc;
+//!
+//! #[no_alloc]
+//! fn do_math() -> u8 {
+//!     2 + 2
+//! }
+//! ```
+//!
+//! 2. Evaluate expressions with the `assert_no_alloc!` macro
+//! ```rust,no_run
+//! use qadapt::assert_no_alloc;
+//!
+//! fn do_work() {
+//!     // This code is allowed to trigger an allocation
+//!     let b = Box::new(8);
+//!     
+//!     // This code would panic if an allocation occurred inside it
+//!     let x = assert_no_alloc!(*b + 2);
+//!     assert_eq!(x, 10);
+//! }
 #![deny(missing_docs)]
-extern crate libc;
-#[macro_use]
-extern crate log;
-extern crate qadapt_macro;
-extern crate spin;
+
 // thread_id is necessary because `std::thread::current()` panics if we have not yet
 // allocated a `thread_local!{}` it depends on.
-extern crate thread_id;
+use thread_id;
 
 // Re-export the proc macros to use by other code
 pub use qadapt_macro::*;
@@ -47,9 +81,8 @@ pub fn enter_protected() {
             return;
         }
 
-        if *IS_ACTIVE.read() == false {
-            *IS_ACTIVE.write() = true;
-            warn!("QADAPT not initialized when using allocation guards; please verify `#[global_allocator]` is set!");
+        if !*IS_ACTIVE.read() {
+            panic!("QADAPT not initialized when using allocation guards; please verify `#[global_allocator]` is set!");
         }
 
         PROTECTION_LEVEL
@@ -83,17 +116,30 @@ pub fn exit_protected() {
     }
 }
 
+/// Get the result of an expression, guaranteeing that no memory accesses occur
+/// during its evaluation.
+///
+/// **Warning**: Unexpected behavior may occur when using the `return` keyword.
+/// Because the macro cleanup logic will not be run, QADAPT may trigger a panic
+/// in code that was not specifically intended to be allocation-free.
+#[macro_export]
+macro_rules! assert_no_alloc {
+    ($e:expr) => {{
+        ::qadapt::enter_protected();
+        let e = { $e };
+        ::qadapt::exit_protected();
+        e
+    }};
+}
+
 static IS_ACTIVE: RwLock<bool> = RwLock::new(false);
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
 /// Get the current "protection level" in QADAPT: calls to enter_protected() - exit_protected()
 pub fn protection_level() -> usize {
-    #[cfg(debug_assertions)]
-    {
+    if cfg!(debug_assertions) {
         PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
-    }
-    #[cfg(not(debug_assertions))]
-    {
+    } else {
         0
     }
 }
@@ -123,7 +169,7 @@ fn alloc_immediate() -> bool {
 
 unsafe impl GlobalAlloc for QADAPT {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        if *IS_ACTIVE.read() == false {
+        if !*IS_ACTIVE.read() {
             *IS_ACTIVE.write() = true;
         }
 
@@ -134,7 +180,7 @@ unsafe impl GlobalAlloc for QADAPT {
         }
 
         // Because accessing PROTECTION_LEVEL has the potential to trigger an allocation,
-        // we need to spin until we can claim the INTERNAL_ALLOCATION lock for our thread.
+        // we need to acquire the INTERNAL_ALLOCATION lock for our thread.
         claim_internal_alloc();
         let protection_level: Result<usize, ()> =
             PROTECTION_LEVEL.try_with(|v| *v.read()).or(Ok(0));
@@ -170,7 +216,7 @@ unsafe impl GlobalAlloc for QADAPT {
         free(ptr as *mut c_void);
         match protection_level {
             Ok(v) if v > 0 => {
-                // Tripped a bad dealloc, but make sure further memory access during unwind
+                // Tripped a bad drop, but make sure further memory access during unwind
                 // doesn't have issues
                 PROTECTION_LEVEL.with(|v| *v.write() = 0);
                 panic!(

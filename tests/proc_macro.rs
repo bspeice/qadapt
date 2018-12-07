@@ -1,13 +1,12 @@
-extern crate qadapt;
 use std::io;
 
-use qadapt::allocate_panic;
+use qadapt::no_alloc;
 use qadapt::QADAPT;
 
 #[global_allocator]
 static Q: QADAPT = QADAPT;
 
-#[allocate_panic]
+#[no_alloc]
 fn no_allocate() {
     let _v: Vec<()> = Vec::with_capacity(0);
 }
@@ -17,7 +16,7 @@ fn macro_no_allocate() {
     no_allocate();
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn allocates() {
     assert_eq!(::qadapt::protection_level(), 1);
     // Without boxing, release profile can actually optimize out the allocation
@@ -31,7 +30,7 @@ fn macro_allocates() {
     allocates();
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn no_allocate_ret() -> bool {
     return true;
 }
@@ -41,7 +40,7 @@ fn macro_return() {
     assert!(no_allocate_ret());
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn no_allocate_implicit_ret() -> bool {
     true
 }
@@ -51,7 +50,7 @@ fn macro_implicit_return() {
     assert!(no_allocate_implicit_ret());
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn no_allocate_arg(b: bool) -> bool {
     b
 }
@@ -62,7 +61,7 @@ fn macro_allocate_arg() {
     no_allocate_arg(false);
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn no_allocate_args(_b: bool, _u: usize, i: i64) -> i64 {
     i
 }
@@ -73,7 +72,7 @@ fn macro_allocate_args() {
     no_allocate_args(false, 4, -90);
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn return_result(r: Result<usize, io::Error>) -> Result<Result<usize, io::Error>, ()> {
     Ok(r)
 }
@@ -83,7 +82,7 @@ fn macro_return_result() {
     return_result(Ok(16)).unwrap().unwrap();
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn branching_return(a: bool, b: bool, c: bool) -> u8 {
     if a {
         if b {
@@ -132,7 +131,7 @@ fn run_closure(x: impl Fn(bool, bool) -> bool) -> bool {
     x(true, false)
 }
 
-#[allocate_panic]
+#[no_alloc]
 fn example_closure() {
     let c = run_closure(|a: bool, b| return a && b);
     assert!(!c);
@@ -146,7 +145,7 @@ fn macro_closure() {
 }
 
 #[test]
-#[allocate_panic]
+#[no_alloc]
 fn macro_release_safe() {
     #[cfg(debug_assertions)]
     {
