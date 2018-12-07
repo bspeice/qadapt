@@ -111,7 +111,7 @@ fn escape_return(ts: TokenStream) -> TokenStream {
 
     let mut tt_iter = ts.into_iter();
     while let Some(tt) = tt_iter.next() {
-        let mut tokens = match tt {
+        let tokens = match tt {
             TokenTree::Group(ref g) if g.delimiter() == Delimiter::Brace && !in_closure => {
                 vec![group!(Delimiter::Brace, escape_return(g.stream()))]
             }
