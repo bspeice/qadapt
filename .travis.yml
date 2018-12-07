@@ -23,11 +23,16 @@ matrix:
     # Uniquely identifies the build that uploads to crates.io
     - env: CRATESIO=TRUE
       rust: nightly
-    - rust: nightly
-    # To build against specific Rust versions, include an item like the following:
-    # - rust: 1.30.0
+    - rust: 1.31.0
     - rust: nightly
       os: osx
+    - rust: stable
+      os: osx
+    - rust: beta
+      os: osx
+    - rust: nightly
+    - rust: stable
+    - rust: beta
 
 before_install:
   - set -e
