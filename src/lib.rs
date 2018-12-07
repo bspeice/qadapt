@@ -117,7 +117,7 @@ pub fn exit_protected() {
     }
 }
 
-/// Get the result of an expression, guaranteeing that no allocations occur
+/// Get the result of an expression, guaranteeing that no memory accesses occur
 /// during its evaluation.
 /// 
 /// **Warning**: Unexpected behavior may occur when using the `return` keyword.
