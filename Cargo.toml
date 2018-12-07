@@ -20,7 +20,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 libc = "0.2"
 log = "0.4"
-spin = "0.4"
+spin = { git = "https://github.com/bspeice/spin-rs.git" }
 thread-id = "3.3"
 
 qadapt-macro = { version = "0.7.1", path = "./qadapt-macro" }
