@@ -1,5 +1,5 @@
-extern crate env_logger;
-extern crate qadapt;
+use env_logger;
+
 
 use qadapt::allocate_panic;
 

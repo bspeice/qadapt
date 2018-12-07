@@ -11,14 +11,14 @@
 //! Please also take a look at [qadapt-macro](https://github.com/bspeice/qadapt/tree/master/qadapt-macro)
 //! for some helper macros to make working with QADAPT a bit easier.
 #![deny(missing_docs)]
-extern crate libc;
+
 #[macro_use]
 extern crate log;
-extern crate qadapt_macro;
-extern crate spin;
+
+
 // thread_id is necessary because `std::thread::current()` panics if we have not yet
 // allocated a `thread_local!{}` it depends on.
-extern crate thread_id;
+use thread_id;
 
 // Re-export the proc macros to use by other code
 pub use qadapt_macro::*;

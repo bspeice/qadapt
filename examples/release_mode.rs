@@ -1,4 +1,4 @@
-extern crate qadapt;
+
 
 use qadapt::allocate_panic;
 use qadapt::QADAPT;
