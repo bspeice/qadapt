@@ -69,11 +69,40 @@ thread_local! {
     static PROTECTION_LEVEL: RwLock<usize> = RwLock::new(0);
 }
 
-/// The QADAPT allocator itself
+/// The QADAPT allocator itself 
+/// 
+/// To make use of the allocator, include this code block in your program
+/// binaries/tests:
+/// 
+/// ```rust,ignore
+/// use qadapt::QADAPT;
+/// 
+/// #[global_allocator]
+/// static Q: QADAPT = QADAPT;
+/// ```
 pub struct QADAPT;
 
 /// Let QADAPT know that we are now entering a protected region and that
 /// panics should be triggered if allocations/drops happen while we are running.
+/// 
+/// **Example**:
+/// 
+/// ```rust,no_run
+/// use qadapt::enter_protected;
+/// 
+/// fn main() {
+///     // Force an allocation by using a Box
+///     let x = Box::new(2);
+/// 
+///     enter_protected();
+///     // We're now in a memory-protected region - allocations and drops
+///     // here will trigger thread panic
+///     let y = *x * 4;
+///     exit_protected();
+/// 
+///     // It's now safe to allocate/drop again
+///     let z = Box::new(y);
+/// }
 pub fn enter_protected() {
     #[cfg(debug_assertions)]
     {
@@ -95,6 +124,25 @@ pub fn enter_protected() {
 
 /// Let QADAPT know that we are exiting a protected region. Will panic
 /// if we attempt to [`exit_protected`] more times than we [`enter_protected`].
+/// 
+/// **Example**:
+/// 
+/// ```rust,no_run
+/// use qadapt::enter_protected;
+/// 
+/// fn main() {
+///     // Force an allocation by using a Box
+///     let x = Box::new(2);
+/// 
+///     enter_protected();
+///     // We're now in a memory-protected region - allocations and drops
+///     // here will trigger thread panic
+///     let y = *x * 4;
+///     exit_protected();
+/// 
+///     // It's now safe to allocate/drop again
+///     let z = Box::new(y);
+/// }
 pub fn exit_protected() {
     #[cfg(debug_assertions)]
     {
@@ -118,10 +166,37 @@ pub fn exit_protected() {
 
 /// Get the result of an expression, guaranteeing that no memory accesses occur
 /// during its evaluation.
+/// 
+/// **Example**:
+/// 
+/// ```rust,no_run
+/// use qadapt::assert_no_alloc;
+/// 
+/// fn main() {
+///     assert_no_alloc!(2 + 2);
+/// }
+/// ```
 ///
-/// **Warning**: Unexpected behavior may occur when using the `return` keyword.
-/// Because the macro cleanup logic will not be run, QADAPT may trigger a panic
-/// in code that was not specifically intended to be allocation-free.
+/// **Warning**: Unexpected behavior will occur when using the `return` keyword.
+/// Because QADAPT doesn't have an opportunity to clean up, there may be a panic
+/// in code that was not intended to be allocation-free. The compiler will warn you
+/// that there is an unreachable statement if this happens.
+/// 
+/// ```rust,no_run
+/// use qadapt::assert_no_alloc;
+/// 
+/// fn early_return() -> usize {
+///     assert_no_alloc!(return 8);
+/// }
+/// 
+/// fn main() {
+///     let x = early_return();
+///     
+///     // This triggers a panic - `Box::new` forces an allocation,
+///     // and QADAPT still thinks we're in a protected region because
+///     // of a return in the `early_return()` function
+///     let b = Box::new(x);
+/// }
 #[macro_export]
 macro_rules! assert_no_alloc {
     ($e:expr) => {{
@@ -136,6 +211,27 @@ static IS_ACTIVE: RwLock<bool> = RwLock::new(false);
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
 /// Get the current "protection level" in QADAPT: calls to enter_protected() - exit_protected()
+/// 
+/// **Example**:
+/// 
+/// ```rust,no_run
+/// use qadapt::enter_protected;
+/// use qadapt::exit_protected;
+/// use qadapt::protection_level;
+/// 
+/// fn main() {
+///     enter_protected();
+///     // We're now in an allocation-protected code region
+///     assert_eq!(1, protection_level());
+///     
+///     enter_protected();
+///     // We're still memory protected, but we'll now need to exit twice to be safe
+///     assert_eq!(2, protection_level());
+///     exit_protected();
+///     exit_protected();
+///     
+///     // It's now safe to allocate/drop
+/// }
 pub fn protection_level() -> usize {
     if cfg!(debug_assertions) {
         PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
