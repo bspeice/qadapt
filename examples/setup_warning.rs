@@ -1,6 +1,5 @@
 use env_logger;
 
-
 use qadapt::allocate_panic;
 
 // Note that we're missing the `#[global_allocator]` attribute

@@ -1,4 +1,3 @@
-
 use std::io;
 
 use qadapt::allocate_panic;

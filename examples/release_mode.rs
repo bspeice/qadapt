@@ -1,5 +1,3 @@
-
-
 use qadapt::allocate_panic;
 use qadapt::QADAPT;
 

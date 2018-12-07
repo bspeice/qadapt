@@ -1,5 +1,3 @@
-
-
 use qadapt::enter_protected;
 use qadapt::exit_protected;
 use qadapt::protection_level;

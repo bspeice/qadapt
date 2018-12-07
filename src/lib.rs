@@ -12,10 +12,7 @@
 //! for some helper macros to make working with QADAPT a bit easier.
 #![deny(missing_docs)]
 
-#[macro_use]
-extern crate log;
-
-
+use log::warn;
 // thread_id is necessary because `std::thread::current()` panics if we have not yet
 // allocated a `thread_local!{}` it depends on.
 use thread_id;
@@ -47,7 +44,7 @@ pub fn enter_protected() {
             return;
         }
 
-        if *IS_ACTIVE.read() == false {
+        if !*IS_ACTIVE.read() {
             *IS_ACTIVE.write() = true;
             warn!("QADAPT not initialized when using allocation guards; please verify `#[global_allocator]` is set!");
         }
@@ -123,7 +120,7 @@ fn alloc_immediate() -> bool {
 
 unsafe impl GlobalAlloc for QADAPT {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        if *IS_ACTIVE.read() == false {
+        if !*IS_ACTIVE.read() {
             *IS_ACTIVE.write() = true;
         }
 
