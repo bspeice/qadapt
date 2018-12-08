@@ -69,14 +69,14 @@ thread_local! {
     static PROTECTION_LEVEL: RwLock<usize> = RwLock::new(0);
 }
 
-/// The QADAPT allocator itself 
-/// 
+/// The QADAPT allocator itself
+///
 /// To make use of the allocator, include this code block in your program
 /// binaries/tests:
-/// 
+///
 /// ```rust,ignore
 /// use qadapt::QADAPT;
-/// 
+///
 /// #[global_allocator]
 /// static Q: QADAPT = QADAPT;
 /// ```
@@ -84,23 +84,23 @@ pub struct QADAPT;
 
 /// Let QADAPT know that we are now entering a protected region and that
 /// panics should be triggered if allocations/drops happen while we are running.
-/// 
+///
 /// **Example**:
-/// 
+///
 /// ```rust,no_run
 /// use qadapt::enter_protected;
 /// use qadapt::exit_protected;
-/// 
+///
 /// fn main() {
 ///     // Force an allocation by using a Box
 ///     let x = Box::new(2);
-/// 
+///
 ///     enter_protected();
 ///     // We're now in a memory-protected region - allocations and drops
 ///     // here will trigger thread panic
 ///     let y = *x * 4;
 ///     exit_protected();
-/// 
+///
 ///     // It's now safe to allocate/drop again
 ///     let z = Box::new(y);
 /// }
@@ -125,23 +125,23 @@ pub fn enter_protected() {
 
 /// Let QADAPT know that we are exiting a protected region. Will panic
 /// if we attempt to [`exit_protected`] more times than we [`enter_protected`].
-/// 
+///
 /// **Example**:
-/// 
+///
 /// ```rust,no_run
 /// use qadapt::enter_protected;
 /// use qadapt::exit_protected;
-/// 
+///
 /// fn main() {
 ///     // Force an allocation by using a Box
 ///     let x = Box::new(2);
-/// 
+///
 ///     enter_protected();
 ///     // We're now in a memory-protected region - allocations and drops
 ///     // here will trigger thread panic
 ///     let y = *x * 4;
 ///     exit_protected();
-/// 
+///
 ///     // It's now safe to allocate/drop again
 ///     let z = Box::new(y);
 /// }
@@ -168,12 +168,12 @@ pub fn exit_protected() {
 
 /// Get the result of an expression, guaranteeing that no memory accesses occur
 /// during its evaluation.
-/// 
+///
 /// **Example**:
-/// 
+///
 /// ```rust,no_run
 /// use qadapt::assert_no_alloc;
-/// 
+///
 /// fn main() {
 ///     assert_no_alloc!(2 + 2);
 /// }
@@ -183,14 +183,14 @@ pub fn exit_protected() {
 /// Because QADAPT doesn't have an opportunity to clean up, there may be a panic
 /// in code that was not intended to be allocation-free. The compiler will warn you
 /// that there is an unreachable statement if this happens.
-/// 
+///
 /// ```rust,no_run
 /// use qadapt::assert_no_alloc;
-/// 
+///
 /// fn early_return() -> usize {
 ///     assert_no_alloc!(return 8);
 /// }
-/// 
+///
 /// fn main() {
 ///     let x = early_return();
 ///     
@@ -213,14 +213,14 @@ static IS_ACTIVE: RwLock<bool> = RwLock::new(false);
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
 /// Get the current "protection level" in QADAPT: calls to enter_protected() - exit_protected()
-/// 
+///
 /// **Example**:
-/// 
+///
 /// ```rust,no_run
 /// use qadapt::enter_protected;
 /// use qadapt::exit_protected;
 /// use qadapt::protection_level;
-/// 
+///
 /// fn main() {
 ///     enter_protected();
 ///     // We're now in an allocation-protected code region
