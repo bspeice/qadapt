@@ -89,6 +89,7 @@ pub struct QADAPT;
 /// 
 /// ```rust,no_run
 /// use qadapt::enter_protected;
+/// use qadapt::exit_protected;
 /// 
 /// fn main() {
 ///     // Force an allocation by using a Box
@@ -129,6 +130,7 @@ pub fn enter_protected() {
 /// 
 /// ```rust,no_run
 /// use qadapt::enter_protected;
+/// use qadapt::exit_protected;
 /// 
 /// fn main() {
 ///     // Force an allocation by using a Box
