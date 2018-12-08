@@ -42,7 +42,7 @@ install:
   - source ~/.cargo/env || true
 
 script:
-  - rustup component add rustfmt-preview
+  - rustup component add rustfmt
   - cargo fmt --all -- --check
   - |
     if [ -z "$TRAVIS_TAG" ]; then
