@@ -40,18 +40,12 @@ before_install:
 
 install:
   - source ~/.cargo/env || true
-  - |
-    echo "TRAVIS_RUST_VERSION=\"$TRAVIS_RUST_VERSION\""
-    if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
-      echo "Installing preview"
-      rustup component add "rustfmt-preview"
-    else
-      echo "Installing standard"
-      rustup component add rustfmt
-    fi
+  # Disabling for the time being: rust-lang/rustup.rs#1558
+  # - rustup component add rustfmt
 
 script:
-  - cargo fmt --all -- --check
+  # Disabling for the time being: rust-lang/rustup.rs#1558
+  # - cargo fmt --all -- --check
   - |
     if [ -z "$TRAVIS_TAG" ]; then
       cargo test
