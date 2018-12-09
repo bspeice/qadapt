@@ -41,6 +41,7 @@ before_install:
 install:
   - source ~/.cargo/env || true
   - |
+    echo "TRAVIS_RUST_VERSION:$TRAVIS_RUST_VERSION"
     if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
       rustup component add rustfmt-preview
     else
