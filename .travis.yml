@@ -40,13 +40,13 @@ before_install:
 
 install:
   - source ~/.cargo/env || true
-
-script:
-  - if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
+  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then
       rustup component add rustfmt-preview
     else
       rustup component add rustfmt
     fi
+
+script:
   - cargo fmt --all -- --check
   - |
     if [ -z "$TRAVIS_TAG" ]; then
