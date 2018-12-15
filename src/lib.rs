@@ -30,9 +30,21 @@
 //! ```rust,no_run
 //! use qadapt::no_alloc;
 //!
+//! // This function is fine, there are no allocations here
 //! #[no_alloc]
 //! fn do_math() -> u8 {
 //!     2 + 2
+//! }
+//!
+//! // This function will trigger a panic when called
+//! #[no_alloc]
+//! fn does_panic() -> Box<u32> {
+//!     Box::new(5)
+//! }
+//!
+//! fn main() {
+//!     do_math();
+//!     does_panic();
 //! }
 //! ```
 //!
@@ -60,7 +72,7 @@ pub use qadapt_macro::*;
 use libc::c_void;
 use libc::free;
 use libc::malloc;
-use spin::RwLock;
+use qadapt_spin::RwLock;
 use std::alloc::GlobalAlloc;
 use std::alloc::Layout;
 use std::thread;
