@@ -6,7 +6,7 @@ all:
 contributors:
 	@echo '`qadapt` is developed by:' > CONTRIBUTORS.md
 	@echo '  Bradlee Speice <bradlee@speice.io>' >> CONTRIBUTORS.md
-	@git log --format='  %aN <%aE>' | grep -v "Bradlee Speice <bradlee@speice.io>" | sort -u >> CONTRIBUTORS.md
+	@git log --format='  %aN <%aE>' | grep -v "Bradlee Speice <bradlee@speice.io>" | grep -v "users.noreply" | sort -u >> CONTRIBUTORS.md
 
 .PHONY: readme README.md
 readme: README.md

@@ -1,6 +1,6 @@
 [package]
 name = "qadapt"
-version = "0.7.1"
+version = "1.0.0"
 authors = ["Bradlee Speice <bradlee@speice.io>"]
 description = "The Quick And Dirty Allocation Profiling Tool"
 license = "Apache-2.0"
@@ -22,8 +22,8 @@ maintenance = { status = "actively-developed" }
 libc = "0.2"
 thread-id = "3.3"
 
-qadapt-macro = { version = "0.7.1", path = "./qadapt-macro" }
-qadapt-spin = { version = "0.7.1", path = "./qadapt-spin" }
+qadapt-macro = { version = "1.0.0", path = "./qadapt-macro" }
+qadapt-spin = { version = "1.0.0", path = "./qadapt-spin" }
 
 [dev-dependencies]
 futures = "0.1"

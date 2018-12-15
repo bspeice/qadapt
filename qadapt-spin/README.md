@@ -1,4 +1,4 @@
 qadapt-spin
 ===========
 
-Placeholder for the [`spin-rs`](https://github.com/mvdnes/spin-rs)
+Placeholder for a stable-compatible [`spin-rs`](https://github.com/mvdnes/spin-rs) crate.
