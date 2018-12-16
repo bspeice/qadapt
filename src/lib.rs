@@ -69,12 +69,10 @@ use thread_id;
 // Re-export the proc macros to use by other code
 pub use qadapt_macro::*;
 
-use libc::c_void;
-use libc::free;
-use libc::malloc;
 use qadapt_spin::RwLock;
 use std::alloc::GlobalAlloc;
 use std::alloc::Layout;
+use std::alloc::System;
 use std::thread;
 
 thread_local! {
@@ -93,6 +91,8 @@ thread_local! {
 /// static Q: QADAPT = QADAPT;
 /// ```
 pub struct QADAPT;
+
+static SYSTEM_ALLOC: System = System;
 
 /// Let QADAPT know that we are now entering a protected region and that
 /// panics should be triggered if allocations/drops happen while we are running.
@@ -286,7 +286,7 @@ unsafe impl GlobalAlloc for QADAPT {
         // If we're attempting to allocate our PROTECTION_LEVEL thread local,
         // just allow it through
         if alloc_immediate() {
-            return malloc(layout.size()) as *mut u8;
+            return SYSTEM_ALLOC.alloc(layout);
         }
 
         // Because accessing PROTECTION_LEVEL has the potential to trigger an allocation,
@@ -297,7 +297,7 @@ unsafe impl GlobalAlloc for QADAPT {
         release_internal_alloc();
 
         match protection_level {
-            Ok(v) if v == 0 => malloc(layout.size()) as *mut u8,
+            Ok(v) if v == 0 => SYSTEM_ALLOC.alloc(layout),
             Ok(v) => {
                 // Tripped a bad allocation, but make sure further memory access during unwind
                 // doesn't have issues
@@ -314,7 +314,7 @@ unsafe impl GlobalAlloc for QADAPT {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if alloc_immediate() {
-            return free(ptr as *mut c_void);
+            return SYSTEM_ALLOC.dealloc(ptr, layout);
         }
 
         claim_internal_alloc();
@@ -323,7 +323,7 @@ unsafe impl GlobalAlloc for QADAPT {
         release_internal_alloc();
 
         // Free before checking panic to make sure we avoid leaks
-        free(ptr as *mut c_void);
+        SYSTEM_ALLOC.dealloc(ptr, layout);
         match protection_level {
             Ok(v) if v > 0 => {
                 // Tripped a bad drop, but make sure further memory access during unwind
