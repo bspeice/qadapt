@@ -40,12 +40,10 @@ before_install:
 
 install:
   - source ~/.cargo/env || true
-  # Disabling for the time being: rust-lang/rustup.rs#1558
-  # - rustup component add rustfmt
+  - rustup component add rustfmt
 
 script:
-  # Disabling for the time being: rust-lang/rustup.rs#1558
-  # - cargo fmt --all -- --check
+  - cargo fmt --all -- --check
   - |
     if [ -z "$TRAVIS_TAG" ]; then
       cargo test
