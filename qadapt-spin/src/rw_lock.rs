@@ -1,8 +1,8 @@
-use core::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT, spin_loop_hint as cpu_relax};
 use core::cell::UnsafeCell;
-use core::ops::{Deref, DerefMut};
-use core::fmt;
 use core::default::Default;
+use core::fmt;
+use core::ops::{Deref, DerefMut};
+use core::sync::atomic::{spin_loop_hint as cpu_relax, AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 /// A reader-writer lock
 ///
@@ -42,8 +42,7 @@ use core::default::Default;
 ///     assert_eq!(*w, 6);
 /// } // write lock is dropped here
 /// ```
-pub struct RwLock<T: ?Sized>
-{
+pub struct RwLock<T: ?Sized> {
     lock: AtomicUsize,
     data: UnsafeCell<T>,
 }
@@ -53,8 +52,7 @@ pub struct RwLock<T: ?Sized>
 /// When the guard falls out of scope it will decrement the read count,
 /// potentially releasing the lock.
 #[derive(Debug)]
-pub struct RwLockReadGuard<'a, T: 'a + ?Sized>
-{
+pub struct RwLockReadGuard<'a, T: 'a + ?Sized> {
     lock: &'a AtomicUsize,
     data: &'a T,
 }
@@ -63,8 +61,7 @@ pub struct RwLockReadGuard<'a, T: 'a + ?Sized>
 ///
 /// When the guard falls out of scope it will release the lock.
 #[derive(Debug)]
-pub struct RwLockWriteGuard<'a, T: 'a + ?Sized>
-{
+pub struct RwLockWriteGuard<'a, T: 'a + ?Sized> {
     lock: &'a AtomicUsize,
     data: &'a mut T,
 }
@@ -75,8 +72,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 
 const USIZE_MSB: usize = ::core::isize::MIN as usize;
 
-impl<T> RwLock<T>
-{
+impl<T> RwLock<T> {
     /// Creates a new spinlock wrapping the supplied data.
     ///
     /// May be used statically:
@@ -93,18 +89,15 @@ impl<T> RwLock<T>
     /// }
     /// ```
     #[inline]
-    pub const fn new(user_data: T) -> RwLock<T>
-    {
-        RwLock
-        {
+    pub const fn new(user_data: T) -> RwLock<T> {
+        RwLock {
             lock: ATOMIC_USIZE_INIT,
             data: UnsafeCell::new(user_data),
         }
     }
 
     /// Consumes this `RwLock`, returning the underlying data.
-    pub fn into_inner(self) -> T
-    {
+    pub fn into_inner(self) -> T {
         // We know statically that there are no outstanding references to
         // `self` so there's no need to lock.
         let RwLock { data, .. } = self;
@@ -112,8 +105,7 @@ impl<T> RwLock<T>
     }
 }
 
-impl<T: ?Sized> RwLock<T>
-{
+impl<T: ?Sized> RwLock<T> {
     /// Locks this rwlock with shared read access, blocking the current thread
     /// until it can be acquired.
     ///
@@ -136,8 +128,7 @@ impl<T: ?Sized> RwLock<T>
     /// }
     /// ```
     #[inline]
-    pub fn read<'a>(&'a self) -> RwLockReadGuard<'a, T>
-    {
+    pub fn read<'a>(&'a self) -> RwLockReadGuard<'a, T> {
         // (funny do-while loop)
         while {
             // Old value, with write bit unset
@@ -164,7 +155,7 @@ impl<T: ?Sized> RwLock<T>
         }
         RwLockReadGuard {
             lock: &self.lock,
-            data: unsafe { & *self.data.get() },
+            data: unsafe { &*self.data.get() },
         }
     }
 
@@ -191,20 +182,16 @@ impl<T: ?Sized> RwLock<T>
     /// }
     /// ```
     #[inline]
-    pub fn try_read(&self) -> Option<RwLockReadGuard<T>>
-    {
+    pub fn try_read(&self) -> Option<RwLockReadGuard<T>> {
         // Old value, with write bit unset
         let old = (!USIZE_MSB) & self.lock.load(Ordering::Relaxed);
 
         let new = old + 1;
         debug_assert!(new != (!USIZE_MSB) & (!0));
-        if self.lock.compare_and_swap(old,
-                                      new,
-                                      Ordering::SeqCst) == old
-        {
+        if self.lock.compare_and_swap(old, new, Ordering::SeqCst) == old {
             Some(RwLockReadGuard {
                 lock: &self.lock,
-                data: unsafe { & *self.data.get() },
+                data: unsafe { &*self.data.get() },
             })
         } else {
             None
@@ -251,23 +238,18 @@ impl<T: ?Sized> RwLock<T>
     /// }
     /// ```
     #[inline]
-    pub fn write<'a>(&'a self) -> RwLockWriteGuard<'a, T>
-    {
-        loop
-        {
+    pub fn write<'a>(&'a self) -> RwLockWriteGuard<'a, T> {
+        loop {
             // Old value, with write bit unset.
             let old = (!USIZE_MSB) & self.lock.load(Ordering::Relaxed);
             // Old value, with write bit set.
             let new = USIZE_MSB | old;
-            if self.lock.compare_and_swap(old,
-                                          new,
-                                          Ordering::SeqCst) == old
-            {
+            if self.lock.compare_and_swap(old, new, Ordering::SeqCst) == old {
                 // Wait for readers to go away, then lock is ours.
                 while self.lock.load(Ordering::Relaxed) != USIZE_MSB {
                     cpu_relax();
                 }
-                break
+                break;
             }
         }
         RwLockWriteGuard {
@@ -296,12 +278,8 @@ impl<T: ?Sized> RwLock<T>
     /// }
     /// ```
     #[inline]
-    pub fn try_write(&self) -> Option<RwLockWriteGuard<T>>
-    {
-        if self.lock.compare_and_swap(0,
-                                      USIZE_MSB,
-                                      Ordering::SeqCst) == 0
-        {
+    pub fn try_write(&self) -> Option<RwLockWriteGuard<T>> {
+        if self.lock.compare_and_swap(0, USIZE_MSB, Ordering::SeqCst) == 0 {
             Some(RwLockWriteGuard {
                 lock: &self.lock,
                 data: unsafe { &mut *self.data.get() },
@@ -312,12 +290,9 @@ impl<T: ?Sized> RwLock<T>
     }
 }
 
-impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T>
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
-        match self.try_read()
-        {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.try_read() {
             Some(guard) => write!(f, "RwLock {{ data: ")
                 .and_then(|()| (&*guard).fmt(f))
                 .and_then(|()| write!(f, "}}")),
@@ -335,17 +310,23 @@ impl<T: ?Sized + Default> Default for RwLock<T> {
 impl<'rwlock, T: ?Sized> Deref for RwLockReadGuard<'rwlock, T> {
     type Target = T;
 
-    fn deref(&self) -> &T { self.data }
+    fn deref(&self) -> &T {
+        self.data
+    }
 }
 
 impl<'rwlock, T: ?Sized> Deref for RwLockWriteGuard<'rwlock, T> {
     type Target = T;
 
-    fn deref(&self) -> &T { self.data }
+    fn deref(&self) -> &T {
+        self.data
+    }
 }
 
 impl<'rwlock, T: ?Sized> DerefMut for RwLockWriteGuard<'rwlock, T> {
-    fn deref_mut(&mut self) -> &mut T { self.data }
+    fn deref_mut(&mut self) -> &mut T {
+        self.data
+    }
 }
 
 impl<'rwlock, T: ?Sized> Drop for RwLockReadGuard<'rwlock, T> {
@@ -366,9 +347,9 @@ impl<'rwlock, T: ?Sized> Drop for RwLockWriteGuard<'rwlock, T> {
 mod tests {
     use std::prelude::v1::*;
 
-    use std::sync::Arc;
-    use std::sync::mpsc::channel;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::mpsc::channel;
+    use std::sync::Arc;
     use std::thread;
 
     use super::*;
@@ -418,7 +399,7 @@ mod tests {
         let arc2 = arc.clone();
         let (tx, rx) = channel();
 
-        thread::spawn(move|| {
+        thread::spawn(move || {
             let mut lock = arc2.write();
             for _ in 0..10 {
                 let tmp = *lock;
@@ -433,7 +414,7 @@ mod tests {
         let mut children = Vec::new();
         for _ in 0..5 {
             let arc3 = arc.clone();
-            children.push(thread::spawn(move|| {
+            children.push(thread::spawn(move || {
                 let lock = arc3.read();
                 assert!(*lock >= 0);
             }));
@@ -454,7 +435,7 @@ mod tests {
     fn test_rw_arc_access_in_unwind() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _ = thread::spawn(move|| -> () {
+        let _ = thread::spawn(move || -> () {
             struct Unwinder {
                 i: Arc<RwLock<isize>>,
             }
@@ -466,7 +447,8 @@ mod tests {
             }
             let _u = Unwinder { i: arc2 };
             panic!();
-        }).join();
+        })
+        .join();
         let lock = arc.read();
         assert_eq!(*lock, 2);
     }
@@ -493,7 +475,10 @@ mod tests {
         let write_result = lock.try_write();
         match write_result {
             None => (),
-            Some(_) => assert!(false, "try_write should not succeed while read_guard is in scope"),
+            Some(_) => assert!(
+                false,
+                "try_write should not succeed while read_guard is in scope"
+            ),
         }
 
         drop(read_guard);
