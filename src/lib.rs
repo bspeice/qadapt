@@ -69,7 +69,7 @@ use thread_id;
 // Re-export the proc macros to use by other code
 pub use qadapt_macro::*;
 
-use qadapt_spin::RwLock;
+use spin::RwLock;
 use std::alloc::GlobalAlloc;
 use std::alloc::Layout;
 use std::alloc::System;
