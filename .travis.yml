@@ -55,8 +55,6 @@ after_success: |
     if [ -n "$TRAVIS_TAG" ] && [ -n "$CRATESIO" ]; then
         cd qadapt-macro &&
         cargo publish --token "$CARGO_TOKEN" &&
-        cd ../qadapt-spin &&
-        cargo publish --token "$CARGO_TOKEN" &&
         cd .. &&
         cargo publish --token "$CARGO_TOKEN"
     elif [ -n "$CODECOV" ] && [ -z "$TRAVIS_TAG" ]; then
