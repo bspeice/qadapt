@@ -17,11 +17,17 @@
 //! Actually making use of QADAPT is straight-forward. To set up the allocator,
 //! place the following snippet in either your program binaries (main.rs) or tests:
 //!
-//! ```rust,ignore
+//! ```rust,no_run
 //! use qadapt::QADAPT;
 //!
 //! #[global_allocator]
 //! static Q: QADAPT = QADAPT;
+//!
+//! fn main() {
+//!     if cfg!(debug_assertions) {
+//!         assert!(qadapt::is_active());
+//!     }
+//! }
 //! ```
 //!
 //! After that, there are two ways of telling QADAPT that it should trigger a panic:
@@ -29,6 +35,11 @@
 //! 1. Annotate functions with the `#[no_alloc]` proc macro:
 //! ```rust,no_run
 //! use qadapt::no_alloc;
+//! use qadapt::QADAPT;
+//! use std::panic::catch_unwind;
+//!
+//! #[global_allocator]
+//! static Q: QADAPT = QADAPT;
 //!
 //! // This function is fine, there are no allocations here
 //! #[no_alloc]
@@ -44,15 +55,21 @@
 //!
 //! fn main() {
 //!     do_math();
-//!     does_panic();
+//!
+//!     let err = catch_unwind(|| does_panic());
+//!     assert!(err.is_err());
 //! }
 //! ```
 //!
 //! 2. Evaluate expressions with the `assert_no_alloc!` macro
-//! ```rust,no_run
+//! ```rust
 //! use qadapt::assert_no_alloc;
+//! use qadapt::QADAPT;
 //!
-//! fn do_work() {
+//! #[global_allocator]
+//! static Q: QADAPT = QADAPT;
+//!
+//! fn main() {
 //!     // This code is allowed to trigger an allocation
 //!     let b = Box::new(8);
 //!     
@@ -60,6 +77,7 @@
 //!     let x = assert_no_alloc!(*b + 2);
 //!     assert_eq!(x, 10);
 //! }
+//! ```
 #![deny(missing_docs)]
 
 // thread_id is necessary because `std::thread::current()` panics if we have not yet
@@ -84,11 +102,17 @@ thread_local! {
 /// To make use of the allocator, include this code block in your program
 /// binaries/tests:
 ///
-/// ```rust,ignore
+/// ```rust,no_run
 /// use qadapt::QADAPT;
 ///
 /// #[global_allocator]
 /// static Q: QADAPT = QADAPT;
+///
+/// fn main() {
+///     if cfg!(debug_assertions) {
+///         assert!(qadapt::is_active());
+///     }
+/// }
 /// ```
 pub struct QADAPT;
 
@@ -99,9 +123,13 @@ static SYSTEM_ALLOC: System = System;
 ///
 /// **Example**:
 ///
-/// ```rust,no_run
+/// ```rust
 /// use qadapt::enter_protected;
 /// use qadapt::exit_protected;
+/// use qadapt::QADAPT;
+///
+/// #[global_allocator]
+/// static Q: QADAPT = QADAPT;
 ///
 /// fn main() {
 ///     // Force an allocation by using a Box
@@ -119,12 +147,8 @@ static SYSTEM_ALLOC: System = System;
 pub fn enter_protected() {
     #[cfg(debug_assertions)]
     {
-        if thread::panicking() {
+        if thread::panicking() || !is_active() {
             return;
-        }
-
-        if !*IS_ACTIVE.read() {
-            panic!("QADAPT not initialized when using allocation guards; please verify `#[global_allocator]` is set!");
         }
 
         PROTECTION_LEVEL
@@ -140,9 +164,13 @@ pub fn enter_protected() {
 ///
 /// **Example**:
 ///
-/// ```rust,no_run
+/// ```rust
 /// use qadapt::enter_protected;
 /// use qadapt::exit_protected;
+/// use qadapt::QADAPT;
+///
+/// #[global_allocator]
+/// static Q: QADAPT = QADAPT;
 ///
 /// fn main() {
 ///     // Force an allocation by using a Box
@@ -160,7 +188,7 @@ pub fn enter_protected() {
 pub fn exit_protected() {
     #[cfg(debug_assertions)]
     {
-        if thread::panicking() {
+        if thread::panicking() || !is_active() {
             return;
         }
 
@@ -183,8 +211,12 @@ pub fn exit_protected() {
 ///
 /// **Example**:
 ///
-/// ```rust,no_run
+/// ```rust
 /// use qadapt::assert_no_alloc;
+/// use qadapt::QADAPT;
+///
+/// #[global_allocator]
+/// static Q: QADAPT = QADAPT;
 ///
 /// fn main() {
 ///     assert_no_alloc!(2 + 2);
@@ -198,6 +230,11 @@ pub fn exit_protected() {
 ///
 /// ```rust,no_run
 /// use qadapt::assert_no_alloc;
+/// use qadapt::QADAPT;
+/// use std::panic::catch_unwind;
+///
+/// #[global_allocator]
+/// static Q: QADAPT = QADAPT;
 ///
 /// fn early_return() -> usize {
 ///     assert_no_alloc!(return 8);
@@ -206,10 +243,12 @@ pub fn exit_protected() {
 /// fn main() {
 ///     let x = early_return();
 ///     
-///     // This triggers a panic - `Box::new` forces an allocation,
-///     // and QADAPT still thinks we're in a protected region because
-///     // of a return in the `early_return()` function
-///     let b = Box::new(x);
+///     // Even though only the `early_return` function contains
+///     // QADAPT allocation guards, this triggers a panic:
+///     // `Box::new` forces an allocation, and QADAPT still thinks
+///     // we're in a protected region because of the return in  `early_return()`
+///     let res = catch_unwind(|| Box::new(x));
+///     assert!(res.is_err());
 /// }
 #[macro_export]
 macro_rules! assert_no_alloc {
@@ -231,7 +270,11 @@ static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 /// ```rust,no_run
 /// use qadapt::enter_protected;
 /// use qadapt::exit_protected;
+/// use qadapt::QADAPT;
 /// use qadapt::protection_level;
+///
+/// #[global_allocator]
+/// static Q: QADAPT = QADAPT;
 ///
 /// fn main() {
 ///     enter_protected();
@@ -251,6 +294,34 @@ pub fn protection_level() -> usize {
         PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
     } else {
         0
+    }
+}
+
+/// Determine whether qadapt is running as the current global allocator. Useful for
+/// double-checking that you will in fact panic if allocations happen in guarded code.
+///
+/// **Note**: when running in `release` profile, `is_active()` will always return false.
+///
+/// **Example**:
+///
+/// ```rust,no_run
+/// use qadapt::is_active;
+/// use qadapt::QADAPT;
+///
+/// #[global_allocator]
+/// static Q: QADAPT = QADAPT;
+///
+/// pub fn main() {
+///     if cfg!(debug_assertions) {
+///         assert!(is_active());
+///     }
+/// }
+/// ```
+pub fn is_active() -> bool {
+    if cfg!(debug_assertions) {
+        *IS_ACTIVE.read()
+    } else {
+        false
     }
 }
 
