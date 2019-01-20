@@ -27,9 +27,7 @@
 //!     # // Because `debug_assertions` are on for doctests in release mode
 //!     # // we have to add an extra guard.
 //!     # if qadapt::is_active() {
-//!     if cfg!(debug_assertions) {
-//!         assert!(qadapt::is_active());
-//!     }
+//!     assert!(qadapt::is_active());
 //!     # }
 //! }
 //! ```
@@ -118,9 +116,7 @@ static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 ///
 /// fn main() {
 ///     # if qadapt::is_active() {
-///     if cfg!(debug_assertions) {
-///         assert!(qadapt::is_active());
-///     }
+///     assert!(qadapt::is_active());
 ///     # }
 /// }
 /// ```
@@ -324,9 +320,7 @@ pub fn protection_level() -> usize {
 ///
 /// pub fn main() {
 ///     # if qadapt::is_active() {
-///     if cfg!(debug_assertions) {
-///         assert!(is_active());
-///     }
+///     assert!(is_active());
 ///     # }
 /// }
 /// ```
