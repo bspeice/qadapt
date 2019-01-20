@@ -263,7 +263,9 @@ macro_rules! assert_no_alloc {
 static IS_ACTIVE: RwLock<bool> = RwLock::new(false);
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
-/// Get the current "protection level" in QADAPT: calls to enter_protected() - exit_protected()
+/// Get the current "protection level" in QADAPT: calls to `enter_protected() - exit_protected()`.
+///
+/// **Note**: For release builds, `protection_level()` will always return 0.
 ///
 /// **Example**:
 ///
@@ -290,11 +292,7 @@ static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 ///     // It's now safe to allocate/drop
 /// }
 pub fn protection_level() -> usize {
-    if cfg!(debug_assertions) {
-        PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
-    } else {
-        0
-    }
+    PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
 }
 
 /// Determine whether qadapt is running as the current global allocator. Useful for
