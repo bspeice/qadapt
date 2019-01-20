@@ -105,7 +105,6 @@ thread_local! {
 static IS_ACTIVE: RwLock<bool> = RwLock::new(false);
 static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 
-
 /// The QADAPT allocator itself
 ///
 /// To make use of the allocator, include this code block in your program
@@ -307,10 +306,12 @@ pub fn protection_level() -> usize {
     PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
 }
 
-/// Determine whether qadapt is running as the current global allocator. Useful for
-/// double-checking that you will in fact panic if allocations happen in guarded code.
+/// Determine whether QADAPT will trigger thread panics if an allocation happens
+/// during protected code. This should be used for making sure that QADAPT is
+/// properly set up and initialized.
 ///
-/// **Note**: when running in `release` profile, `is_active()` will always return false.
+/// Note that this will return `false` in release builds even if QADAPT is set
+/// as the `#[global_allocator]`.
 ///
 /// **Example**:
 ///
@@ -331,6 +332,9 @@ pub fn protection_level() -> usize {
 /// ```
 pub fn is_active() -> bool {
     if cfg!(debug_assertions) {
+        // Because there are heap allocations that happen before `fn main()`,
+        // we don't need to force an extra allocation here to guarantee that
+        // IS_ACTIVE is set
         *IS_ACTIVE.read()
     } else {
         false
