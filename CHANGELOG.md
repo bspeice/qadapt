@@ -1,4 +1,10 @@
-# Version 1.1.0
+# Version 1.0.3
+
+- Mark the crate deprecated; [alloc-counter](https://crates.io/crates/alloc_counter)
+  does a better job at solving the problems QADAPT was driven for, and I'll be putting
+  my effort towards improving it instead.
+
+# Version 1.0.2
 
 - Don't panic if calling guarded code and QADAPT isn't the allocator;
   Instead, let code determine at runtime whether or not QADAPT is enabled

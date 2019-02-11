@@ -1,5 +1,7 @@
 //! ## `debug_assert!` for your memory usage
 //!
+//! **Please note**: This crate has been deprecated in favor of [alloc-counter](https://crates.io/crates/alloc_counter).
+//!
 //! This allocator is a helper for writing high-performance code that is memory-sensitive;
 //! a thread panic will be triggered if a function annotated with `#[no_alloc]`,
 //! or code inside an `assert_no_alloc!` macro interacts with the allocator in any way.
@@ -120,6 +122,10 @@ static INTERNAL_ALLOCATION: RwLock<usize> = RwLock::new(usize::max_value());
 ///     # }
 /// }
 /// ```
+#[deprecated(
+    since = "1.0.3",
+    note = "Please use the `alloc_counter` crate instead."
+)]
 pub struct QADAPT;
 
 static SYSTEM_ALLOC: System = System;
@@ -150,6 +156,10 @@ static SYSTEM_ALLOC: System = System;
 ///     // It's now safe to allocate/drop again
 ///     let z = Box::new(y);
 /// }
+#[deprecated(
+    since = "1.0.3",
+    note = "Please use the `alloc_counter` crate instead."
+)]
 pub fn enter_protected() {
     #[cfg(debug_assertions)]
     {
@@ -191,6 +201,10 @@ pub fn enter_protected() {
 ///     // It's now safe to allocate/drop again
 ///     let z = Box::new(y);
 /// }
+#[deprecated(
+    since = "1.0.3",
+    note = "Please use the `alloc_counter` crate instead."
+)]
 pub fn exit_protected() {
     #[cfg(debug_assertions)]
     {
@@ -259,6 +273,10 @@ pub fn exit_protected() {
 ///     # }
 /// }
 #[macro_export]
+#[deprecated(
+    since = "1.0.3",
+    note = "Please use the `alloc_counter` crate instead."
+)]
 macro_rules! assert_no_alloc {
     ($e:expr) => {{
         ::qadapt::enter_protected();
@@ -298,6 +316,10 @@ macro_rules! assert_no_alloc {
 ///     
 ///     // It's now safe to allocate/drop
 /// }
+#[deprecated(
+    since = "1.0.3",
+    note = "Please use the `alloc_counter` crate instead."
+)]
 pub fn protection_level() -> usize {
     PROTECTION_LEVEL.try_with(|v| *v.read()).unwrap_or(0)
 }
@@ -324,6 +346,10 @@ pub fn protection_level() -> usize {
 ///     # }
 /// }
 /// ```
+#[deprecated(
+    since = "1.0.3",
+    note = "Please use the `alloc_counter` crate instead."
+)]
 pub fn is_active() -> bool {
     if cfg!(debug_assertions) {
         // Because there are heap allocations that happen before `fn main()`,
