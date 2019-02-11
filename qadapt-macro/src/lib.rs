@@ -1,5 +1,7 @@
 //! Helper macros to use with the QADAPT allocator system
 //!
+//! **Please note**: This crate has been deprecated in favor of [alloc-counter](https://crates.io/crates/alloc_counter)
+//!
 //! This crate is intended for managing the QADAPT allocator,
 //! and is unusable on its own.
 //!
@@ -155,6 +157,10 @@ fn escape_return(ts: TokenStream) -> TokenStream {
 /// separate thread, or defers allocations via closure/Future, those results
 /// will not trigger an error.
 #[proc_macro_attribute]
+#[deprecated(
+    since = "1.0.3",
+    note = "Please use the `alloc_counter` crate instead."
+)]
 pub fn no_alloc(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut protected_fn: Vec<TokenTree> = Vec::new();
     let mut item_iter = item.into_iter();
